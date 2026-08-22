@@ -1,4 +1,5 @@
 #include "FortniteGame/Public/Gameplay/FortAircraft.h"
+#include "FortniteGame/Public/Versioning/FortBuildProfile.h"
 
 #include <algorithm>
 #include <cmath>
@@ -43,8 +44,8 @@ bool FFortAircraftDirector::SpawnFlightPath(const FVector& MapCenter, float MapR
     FlightStart = PathCenter - Direction * MapRadius;
     FlightEnd = PathCenter + Direction * MapRadius;
 
-    FlightStart.Z = FAthenaSpawn::DefaultAircraftAltitude;
-    FlightEnd.Z = FAthenaSpawn::DefaultAircraftAltitude;
+    FlightStart.Z = GetActiveBuildProfile().AircraftAltitude;
+    FlightEnd.Z = GetActiveBuildProfile().AircraftAltitude;
 
     const UWorld World = EngineRuntime->GetWorld();
     if (!World)
@@ -52,7 +53,7 @@ bool FFortAircraftDirector::SpawnFlightPath(const FVector& MapCenter, float MapR
         return false;
     }
 
-    const std::vector<FObjectHandle> ExistingAircraft = World.GetAllActorsOfClass(EngineRuntime->GetUnrealRuntime().FindClass(FAthenaPaths::AircraftClass));
+    const std::vector<FObjectHandle> ExistingAircraft = World.GetAllActorsOfClass(EngineRuntime->GetUnrealRuntime().FindClass(GetActiveBuildProfile().AssetPaths.AircraftClass));
 
     if (!ExistingAircraft.empty())
     {

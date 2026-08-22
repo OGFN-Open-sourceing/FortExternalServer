@@ -1,4 +1,5 @@
 #include "FortniteGame/Public/Gameplay/FortAbilitySet.h"
+#include "FortniteGame/Public/Versioning/FortBuildProfile.h"
 
 namespace
 {
@@ -14,15 +15,9 @@ void FFortAbilityGrantor::Initialize(FEngineRuntime& InEngineRuntime)
     EngineRuntime = &InEngineRuntime;
 }
 
-const std::vector<std::string>& FFortAbilityGrantor::GetChapterOneSeasonThreeAbilitySets()
+const std::vector<std::string>& FFortAbilityGrantor::GetProfileAbilitySets()
 {
-    static const std::vector<std::string> AbilitySets = { "FortAbilitySet GAB_Athena_Sprint.GAB_Athena_Sprint",
-        "FortAbilitySet GAB_Athena_Jump.GAB_Athena_Jump", "FortAbilitySet GAB_Athena_DBNO.GAB_Athena_DBNO",
-        "FortAbilitySet GAB_Athena_Emote.GAB_Athena_Emote", "FortAbilitySet GA_DefaultPlayer_InteractSearch.GA_DefaultPlayer_InteractSearch",
-        "FortAbilitySet GA_DefaultPlayer_InteractUse.GA_DefaultPlayer_InteractUse",
-        "FortAbilitySet GAB_AthenaSpawnGear.GAB_AthenaSpawnGear" };
-
-    return AbilitySets;
+    return GetActiveBuildProfile().AbilitySets;
 }
 
 bool FFortAbilityGrantor::GrantSingleAbility(const FObjectHandle& AbilitySystemComponent, const FObjectHandle& AbilityClass) const
@@ -108,7 +103,7 @@ bool FFortAbilityGrantor::ApplyAthenaAbilities(const AFortPlayerPawnAthena& Pawn
 
     int32 AppliedSets = 0;
 
-    for (const std::string& AbilitySetPath : GetChapterOneSeasonThreeAbilitySets())
+    for (const std::string& AbilitySetPath : GetProfileAbilitySets())
     {
         if (GrantAbilitySet(Pawn, AbilitySetPath))
         {

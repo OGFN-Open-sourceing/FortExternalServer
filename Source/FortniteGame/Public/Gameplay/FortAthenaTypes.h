@@ -102,6 +102,14 @@ enum class EMovementMode : uint8
     Custom = 6
 };
 
+struct FSafeZonePhaseDefinition
+{
+    float WaitSeconds = 0.0f;
+    float ShrinkSeconds = 0.0f;
+    float Radius = 0.0f;
+    float DamagePerSecond = 0.0f;
+};
+
 namespace FAthenaPaths
 {
     inline constexpr std::string_view AthenaMap = "Athena_Terrain";

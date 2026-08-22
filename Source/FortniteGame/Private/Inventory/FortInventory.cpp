@@ -1,9 +1,8 @@
 #include "FortniteGame/Public/Inventory/FortInventory.h"
+#include "FortniteGame/Public/Versioning/FortBuildProfile.h"
 
 namespace
 {
-    constexpr std::string_view ItemListStructPath = "ScriptStruct FortniteGame.FortItemList";
-    constexpr std::string_view ItemEntryStructPath = "ScriptStruct FortniteGame.FortItemEntry";
 
     struct FItemListLayout
     {
@@ -32,8 +31,8 @@ namespace
 
         bResolved = true;
 
-        const FObjectHandle ItemListStruct = Runtime.FindObject(ItemListStructPath);
-        const FObjectHandle ItemEntryStruct = Runtime.FindObject(ItemEntryStructPath);
+        const FObjectHandle ItemListStruct = Runtime.FindObject(GetActiveBuildProfile().AssetPaths.ItemListStructPath);
+        const FObjectHandle ItemEntryStruct = Runtime.FindObject(GetActiveBuildProfile().AssetPaths.ItemEntryStructPath);
 
         if (!ItemListStruct || !ItemEntryStruct)
         {
@@ -61,11 +60,11 @@ namespace
         switch (ResourceType)
         {
         case EFortResourceType::Wood:
-            return std::string(FAthenaPaths::WoodResource);
+            return GetActiveBuildProfile().AssetPaths.WoodResource;
         case EFortResourceType::Stone:
-            return std::string(FAthenaPaths::StoneResource);
+            return GetActiveBuildProfile().AssetPaths.StoneResource;
         case EFortResourceType::Metal:
-            return std::string(FAthenaPaths::MetalResource);
+            return GetActiveBuildProfile().AssetPaths.MetalResource;
         default:
             return std::string();
         }

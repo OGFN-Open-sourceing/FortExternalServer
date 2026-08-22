@@ -12,7 +12,7 @@ public:
 
     bool GrantAbilitySet(const AFortPlayerPawnAthena& Pawn, std::string_view AbilitySetPath) const;
 
-    static const std::vector<std::string>& GetChapterOneSeasonThreeAbilitySets();
+    static const std::vector<std::string>& GetProfileAbilitySets();
 
 private:
     bool GrantSingleAbility(const FObjectHandle& AbilitySystemComponent, const FObjectHandle& AbilityClass) const;

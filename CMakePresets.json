@@ -1,0 +1,75 @@
+{
+  "version": 3,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 21,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "vs2026",
+      "displayName": "Visual Studio 2026 x64",
+      "generator": "Visual Studio 18 2026",
+      "architecture": "x64",
+      "binaryDir": "${sourceDir}/Intermediate/CMake/vs2026",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
+      }
+    },
+    {
+      "name": "ninja-release",
+      "displayName": "Ninja Release (MSVC)",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/Intermediate/CMake/ninja-release",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release"
+      },
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
+      }
+    },
+    {
+      "name": "mingw-release",
+      "displayName": "MinGW cross compile Release",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/Intermediate/CMake/mingw-release",
+      "toolchainFile": "${sourceDir}/CMake/Toolchain-MinGW-Win64.cmake",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release"
+      }
+    },
+    {
+      "name": "mingw-debug",
+      "displayName": "MinGW cross compile Debug",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/Intermediate/CMake/mingw-debug",
+      "toolchainFile": "${sourceDir}/CMake/Toolchain-MinGW-Win64.cmake",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "vs2026",
+      "configurePreset": "vs2026",
+      "configuration": "Release"
+    },
+    {
+      "name": "ninja-release",
+      "configurePreset": "ninja-release"
+    },
+    {
+      "name": "mingw-release",
+      "configurePreset": "mingw-release"
+    },
+    {
+      "name": "mingw-debug",
+      "configurePreset": "mingw-debug"
+    }
+  ]
+}

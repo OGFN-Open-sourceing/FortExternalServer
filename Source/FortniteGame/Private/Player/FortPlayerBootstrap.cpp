@@ -1,4 +1,5 @@
 #include "FortniteGame/Public/Player/FortPlayerBootstrap.h"
+#include "FortniteGame/Public/Versioning/FortBuildProfile.h"
 
 void FFortPlayerBootstrap::Initialize(FEngineRuntime& InEngineRuntime, const FPlayerBootstrapSettings& InSettings)
 {
@@ -22,44 +23,38 @@ FObjectHandle FFortPlayerBootstrap::GetPlayerPawnClass() const
 {
     const FUnrealRuntime& Runtime = EngineRuntime->GetUnrealRuntime();
 
-    const FObjectHandle BlueprintClass = Runtime.FindObject("Class /Game/Athena/PlayerPawn_Athena.PlayerPawn_Athena_C");
+    const FObjectHandle BlueprintClass = Runtime.FindObject(GetActiveBuildProfile().AssetPaths.PlayerPawnClassPath);
     if (BlueprintClass)
     {
         return BlueprintClass;
     }
 
-    const FObjectHandle ByName = Runtime.FindClass(FAthenaPaths::AthenaPlayerPawnClass);
-    if (ByName)
-    {
-        return ByName;
-    }
-
-    return Runtime.FindClass("FortniteGame.FortPlayerPawnAthena");
+    return Runtime.FindClass(GetActiveBuildProfile().AssetPaths.PlayerPawnFallbackClass);
 }
 
 FVector FFortPlayerBootstrap::ChooseWarmupSpawnLocation() const
 {
     if (EngineRuntime == nullptr)
     {
-        return FAthenaSpawn::FallbackWarmupLocation;
+        return GetActiveBuildProfile().FallbackSpawnLocation;
     }
 
     const UWorld World = EngineRuntime->GetWorld();
     if (!World)
     {
-        return FAthenaSpawn::FallbackWarmupLocation;
+        return GetActiveBuildProfile().FallbackSpawnLocation;
     }
 
-    const FObjectHandle WarmupStartClass = EngineRuntime->GetUnrealRuntime().FindClass(FAthenaPaths::WarmupPlayerStartClass);
+    const FObjectHandle WarmupStartClass = EngineRuntime->GetUnrealRuntime().FindClass(GetActiveBuildProfile().AssetPaths.WarmupPlayerStartClass);
     if (!WarmupStartClass)
     {
-        return FAthenaSpawn::FallbackWarmupLocation;
+        return GetActiveBuildProfile().FallbackSpawnLocation;
     }
 
     const std::vector<FObjectHandle> Starts = World.GetAllActorsOfClass(WarmupStartClass);
     if (Starts.empty())
     {
-        return FAthenaSpawn::FallbackWarmupLocation;
+        return GetActiveBuildProfile().FallbackSpawnLocation;
     }
 
     const int32 ChosenIndex = RandomStream.RandomRange(0, static_cast<int32>(Starts.size()));
@@ -175,8 +170,8 @@ bool FFortPlayerBootstrap::ApplyCosmetics(const AFortPlayerControllerAthena& Con
         }
     }
 
-    const FObjectHandle HeadPart = Runtime.FindOrLoadObject(FAthenaPaths::DefaultHeadPart);
-    const FObjectHandle BodyPart = Runtime.FindOrLoadObject(FAthenaPaths::DefaultBodyPart);
+    const FObjectHandle HeadPart = Runtime.FindOrLoadObject(GetActiveBuildProfile().AssetPaths.DefaultHeadPart);
+    const FObjectHandle BodyPart = Runtime.FindOrLoadObject(GetActiveBuildProfile().AssetPaths.DefaultBodyPart);
 
     if (HeadPart)
     {
@@ -209,7 +204,7 @@ bool FFortPlayerBootstrap::ApplyStartingLoadout(const AFortPlayerControllerAthen
     std::vector<std::string> Loadout = Settings.StartingLoadout;
     if (Loadout.empty())
     {
-        Loadout.push_back(std::string(FAthenaPaths::DefaultPickaxe));
+        Loadout.push_back(GetActiveBuildProfile().AssetPaths.DefaultPickaxe);
     }
 
     Inventory.ApplyDefaultLoadout(Loadout);

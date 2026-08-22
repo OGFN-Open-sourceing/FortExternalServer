@@ -3,14 +3,6 @@
 #include "FortniteGame/Public/Athena/FortGameStateAthena.h"
 #include "Runtime/Core/Public/Math/RandomStream.h"
 
-struct FSafeZonePhaseDefinition
-{
-    float WaitSeconds = 0.0f;
-    float ShrinkSeconds = 0.0f;
-    float Radius = 0.0f;
-    float DamagePerSecond = 0.0f;
-};
-
 class FFortSafeZoneDirector
 {
 public:
@@ -32,7 +24,7 @@ public:
 
     bool HasFinished() const;
 
-    static std::vector<FSafeZonePhaseDefinition> GetChapterOneSeasonThreePhases();
+    static std::vector<FSafeZonePhaseDefinition> GetProfilePhases();
 
 private:
     void AdvanceToNextPhase(float CurrentTimeSeconds);

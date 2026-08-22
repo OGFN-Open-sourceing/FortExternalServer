@@ -6,8 +6,11 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-if(NOT WIN32)
-    message(FATAL_ERROR "FortExternalServer targets Windows x64 only.")
+if(NOT CMAKE_SYSTEM_NAME STREQUAL "Windows")
+    message(FATAL_ERROR
+        "FortExternalServer produces a Windows x64 executable.\n"
+        "Build on Windows, or cross compile with:\n"
+        "  cmake --preset mingw-release")
 endif()
 
 file(GLOB_RECURSE FORT_EXTERNAL_SERVER_SOURCES CONFIGURE_DEPENDS
@@ -30,7 +33,7 @@ target_compile_definitions(FortExternalServer PRIVATE
     _UNICODE
     _CRT_SECURE_NO_WARNINGS)
 
-target_link_libraries(FortExternalServer PRIVATE psapi)
+target_link_libraries(FortExternalServer PRIVATE psapi ole32 shlwapi)
 
 set_target_properties(FortExternalServer PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/Binaries/Win64"
@@ -41,9 +44,13 @@ if(MSVC)
     target_compile_options(FortExternalServer PRIVATE /W4 /permissive- /Zc:preprocessor /MP)
     target_link_options(FortExternalServer PRIVATE /SUBSYSTEM:CONSOLE)
 else()
-    target_compile_options(FortExternalServer PRIVATE -Wall -Wextra -Wno-unused-parameter)
+    target_compile_options(FortExternalServer PRIVATE -Wall -Wextra -Wno-unused-parameter -municode)
+    target_link_options(FortExternalServer PRIVATE -municode -static-libgcc -static-libstdc++)
 endif()
 
 source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}/Source" FILES
     ${FORT_EXTERNAL_SERVER_SOURCES}
     ${FORT_EXTERNAL_SERVER_HEADERS})
+
+install(TARGETS FortExternalServer RUNTIME DESTINATION .)
+install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/Config" DESTINATION .)

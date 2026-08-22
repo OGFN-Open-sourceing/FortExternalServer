@@ -19,6 +19,9 @@
     <Filter Include="FortniteGame\Private\Player">
       <UniqueIdentifier>{A216740D-A8BF-5315-8C29-30C85E7D34C5}</UniqueIdentifier>
     </Filter>
+    <Filter Include="FortniteGame\Private\Versioning">
+      <UniqueIdentifier>{D1AD9952-9623-5473-B738-6F53DAB411B3}</UniqueIdentifier>
+    </Filter>
     <Filter Include="FortniteGame\Public">
       <UniqueIdentifier>{94DCE417-8D41-5F86-BE0D-0DBE6C50508F}</UniqueIdentifier>
     </Filter>
@@ -33,6 +36,9 @@
     </Filter>
     <Filter Include="FortniteGame\Public\Player">
       <UniqueIdentifier>{0F9DF990-4B1C-52BC-BEF2-8D9A9D0D551E}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="FortniteGame\Public\Versioning">
+      <UniqueIdentifier>{BCDB42C9-950E-5960-88E3-74590344269C}</UniqueIdentifier>
     </Filter>
     <Filter Include="Launch">
       <UniqueIdentifier>{041AE28B-E3AC-55F9-A56F-B70FFB7D6CF3}</UniqueIdentifier>
@@ -168,6 +174,9 @@
     <ClInclude Include="..\Source\FortniteGame\Public\Player\FortTeamRoster.h">
       <Filter>FortniteGame\Public\Player</Filter>
     </ClInclude>
+    <ClInclude Include="..\Source\FortniteGame\Public\Versioning\FortBuildProfile.h">
+      <Filter>FortniteGame\Public\Versioning</Filter>
+    </ClInclude>
     <ClInclude Include="..\Source\Launch\Public\LaunchServer.h">
       <Filter>Launch\Public</Filter>
     </ClInclude>
@@ -267,6 +276,9 @@
     <ClInclude Include="..\Source\Runtime\RemoteProcess\Public\X64Emitter.h">
       <Filter>Runtime\RemoteProcess\Public</Filter>
     </ClInclude>
+    <ClInclude Include="..\Source\Server\Public\Configuration.h">
+      <Filter>Server\Public</Filter>
+    </ClInclude>
     <ClInclude Include="..\Source\Server\Public\GameServerHost.h">
       <Filter>Server\Public</Filter>
     </ClInclude>
@@ -304,6 +316,9 @@
     </ClCompile>
     <ClCompile Include="..\Source\FortniteGame\Private\Player\FortTeamRoster.cpp">
       <Filter>FortniteGame\Private\Player</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\FortniteGame\Private\Versioning\Season3BuildProfile.cpp">
+      <Filter>FortniteGame\Private\Versioning</Filter>
     </ClCompile>
     <ClCompile Include="..\Source\Launch\Private\LaunchServer.cpp">
       <Filter>Launch\Private</Filter>

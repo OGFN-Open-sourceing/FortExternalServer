@@ -1,6 +1,6 @@
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 17
-VisualStudioVersion = 17.0.31903.59
+# Visual Studio Version 18
+VisualStudioVersion = 18.0.10000.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC3F1B2-9B29-4E9D-9B78-1DDA0E23F1B0}") = "FortExternalServer", "Source\FortExternalServer.vcxproj", "{7A3E9C41-5B2D-4E88-9F16-3D5A0C8B27E4}"
 EndProject

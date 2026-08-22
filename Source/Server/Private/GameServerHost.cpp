@@ -176,6 +176,7 @@ bool FGameServerHost::InstallHooks()
     Stage = EHostStage::InstallingHooks;
 
     NetworkHooks.SetFrameTickDelegate([this]() { OnGameThreadTick(); });
+    NetworkHooks.SetFrameTickInterval(Settings.GetRuntime().FrameTickIntervalMilliseconds);
 
     if (!NetworkHooks.Install(EngineRuntime))
     {
@@ -282,9 +283,7 @@ bool FGameServerHost::Start()
 
     FWindowsPlatform::SetConsoleTitleText(L"FortExternalServer");
 
-    UE_LOG_DISPLAY("Host", "FortExternalServer targeting Fortnite " + std::to_string(Settings.GetEngineExpectations().FortniteVersion) + " changelist " +
-        std::to_string(Settings.GetEngineExpectations().Changelist));
-    UE_LOG_DISPLAY("Host", "Playlist " + Settings.GetMatch().PlaylistPath + " with team size " + std::to_string(Settings.GetMatch().TeamSize));
+    Settings.LogResolvedConfiguration();
 
     if (!AttachToGameProcess())
     {
@@ -324,6 +323,18 @@ bool FGameServerHost::Start()
     if (!WaitForAthenaWorld())
     {
         return false;
+    }
+
+    if (Settings.GetRuntime().bDumpObjectsOnStart)
+    {
+        UnrealRuntime.DumpObjectsToFile(FPaths::Combine(BuildRoot, L"Saved\\ObjectDump.txt"));
+    }
+
+    const UNetDriver NetDriver = EngineRuntime.GetWorld().GetNetDriver();
+    if (NetDriver && Settings.GetRuntime().MaxTickRate > 0)
+    {
+        UNetDriver MutableNetDriver = NetDriver;
+        MutableNetDriver.SetNetServerMaxTickRate(Settings.GetRuntime().MaxTickRate);
     }
 
     Stage = EHostStage::RunningMatch;
@@ -422,7 +433,7 @@ void FGameServerHost::PrintStatus() const
 
 void FGameServerHost::ProcessConsoleInput()
 {
-    if (_kbhit() == 0)
+    if (!Settings.GetRuntime().bEnableConsoleCommands || _kbhit() == 0)
     {
         return;
     }

@@ -1,4 +1,5 @@
 #include "FortniteGame/Public/Gameplay/FortSafeZone.h"
+#include "FortniteGame/Public/Versioning/FortBuildProfile.h"
 
 #include <algorithm>
 
@@ -6,7 +7,7 @@ void FFortSafeZoneDirector::Initialize(const AFortGameStateAthena& InGameState, 
 {
     GameState = InGameState;
     MapCenter = InMapCenter;
-    Phases = GetChapterOneSeasonThreePhases();
+    Phases = GetProfilePhases();
 
     Reset();
 }
@@ -52,11 +53,9 @@ bool FFortSafeZoneDirector::HasFinished() const
     return CurrentPhase >= static_cast<int32>(Phases.size());
 }
 
-std::vector<FSafeZonePhaseDefinition> FFortSafeZoneDirector::GetChapterOneSeasonThreePhases()
+std::vector<FSafeZonePhaseDefinition> FFortSafeZoneDirector::GetProfilePhases()
 {
-    return { { 210.0f, 180.0f, 133000.0f, 1.0f }, { 120.0f, 120.0f, 66500.0f, 1.0f }, { 90.0f, 90.0f, 33250.0f, 2.0f }, { 90.0f, 90.0f, 16625.0f, 5.0f },
-        { 60.0f, 60.0f, 8312.0f, 8.0f }, { 60.0f, 60.0f, 4156.0f, 10.0f }, { 45.0f, 45.0f, 2078.0f, 10.0f }, { 45.0f, 45.0f, 1039.0f, 10.0f },
-        { 30.0f, 30.0f, 0.0f, 10.0f } };
+    return GetActiveBuildProfile().SafeZonePhases;
 }
 
 void FFortSafeZoneDirector::Start(float CurrentTimeSeconds)

@@ -1,12 +1,7 @@
 #include "FortniteGame/Public/Athena/FortAthenaMatch.h"
+#include "FortniteGame/Public/Versioning/FortBuildProfile.h"
 
 #include <algorithm>
-
-namespace
-{
-    constexpr float MapRadiusForFlightPath = 140000.0f;
-    constexpr float SkydiveDropHeight = 10000.0f;
-}
 
 bool FFortAthenaMatch::Initialize(FEngineRuntime& InEngineRuntime, FNetworkHooks& InNetworkHooks, const FAthenaMatchSettings& InSettings)
 {
@@ -484,7 +479,7 @@ void FFortAthenaMatch::UpdateWarmupPhase(float CurrentTime)
 
     bMatchStarted = true;
 
-    AircraftDirector.SpawnFlightPath(FVector(0.0f, 0.0f, 0.0f), MapRadiusForFlightPath);
+    AircraftDirector.SpawnFlightPath(FVector(0.0f, 0.0f, 0.0f), GetActiveBuildProfile().MapRadius);
     AircraftDirector.Start(Settings.AircraftFlightSeconds, CurrentTime);
 
     for (const auto& Entry : TrackedPlayers)
@@ -534,7 +529,7 @@ void FFortAthenaMatch::DropPlayerFromAircraft(const AFortPlayerControllerAthena&
     }
 
     FVector DropLocation = AircraftDirector.GetPositionAtTime(CurrentTime);
-    DropLocation.Z = SkydiveDropHeight;
+    DropLocation.Z = GetActiveBuildProfile().SkydiveDropHeight;
 
     Pawn.TeleportTo(DropLocation, FRotator());
     Pawn.SetMovementMode(EMovementMode::Falling, 0);
