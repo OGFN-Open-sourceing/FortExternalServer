@@ -1,0 +1,152 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="17.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <VCProjectVersion>17.0</VCProjectVersion>
+    <ProjectGuid>{7A3E9C41-5B2D-4E88-9F16-3D5A0C8B27E4}</ProjectGuid>
+    <RootNamespace>FortExternalServer</RootNamespace>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)'=='Debug'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)'=='Release'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <PropertyGroup>
+    <OutDir>$(SolutionDir)Binaries\Win64\</OutDir>
+    <IntDir>$(SolutionDir)Intermediate\$(Configuration)\</IntDir>
+    <TargetName>FortExternalServer</TargetName>
+  </PropertyGroup>
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <LanguageStandard>stdcpp20</LanguageStandard>
+      <AdditionalIncludeDirectories>$(SolutionDir)Source;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>WIN32_LEAN_AND_MEAN;NOMINMAX;UNICODE;_UNICODE;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <WarningLevel>Level4</WarningLevel>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <ConformanceMode>true</ConformanceMode>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <AdditionalDependencies>psapi.lib;ole32.lib;shlwapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)'=='Release'">
+    <ClCompile>
+      <Optimization>MaxSpeed</Optimization>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+    </ClCompile>
+    <Link>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClInclude Include="..\Source\FortniteGame\Public\Athena\FortAthenaMatch.h" />
+    <ClInclude Include="..\Source\FortniteGame\Public\Athena\FortGameModeAthena.h" />
+    <ClInclude Include="..\Source\FortniteGame\Public\Athena\FortGameStateAthena.h" />
+    <ClInclude Include="..\Source\FortniteGame\Public\Gameplay\FortAbilitySet.h" />
+    <ClInclude Include="..\Source\FortniteGame\Public\Gameplay\FortAircraft.h" />
+    <ClInclude Include="..\Source\FortniteGame\Public\Gameplay\FortAthenaTypes.h" />
+    <ClInclude Include="..\Source\FortniteGame\Public\Gameplay\FortSafeZone.h" />
+    <ClInclude Include="..\Source\FortniteGame\Public\Inventory\FortInventory.h" />
+    <ClInclude Include="..\Source\FortniteGame\Public\Player\FortPlayerBootstrap.h" />
+    <ClInclude Include="..\Source\FortniteGame\Public\Player\FortPlayerControllerAthena.h" />
+    <ClInclude Include="..\Source\FortniteGame\Public\Player\FortTeamRoster.h" />
+    <ClInclude Include="..\Source\Launch\Public\LaunchServer.h" />
+    <ClInclude Include="..\Source\Runtime\Core\Public\Containers\StringConv.h" />
+    <ClInclude Include="..\Source\Runtime\Core\Public\CoreMinimal.h" />
+    <ClInclude Include="..\Source\Runtime\Core\Public\CoreTypes.h" />
+    <ClInclude Include="..\Source\Runtime\Core\Public\HAL\WindowsPlatform.h" />
+    <ClInclude Include="..\Source\Runtime\Core\Public\Logging\LogMacros.h" />
+    <ClInclude Include="..\Source\Runtime\Core\Public\Math\RandomStream.h" />
+    <ClInclude Include="..\Source\Runtime\Core\Public\Math\Rotator.h" />
+    <ClInclude Include="..\Source\Runtime\Core\Public\Math\Transform.h" />
+    <ClInclude Include="..\Source\Runtime\Core\Public\Math\Vector.h" />
+    <ClInclude Include="..\Source\Runtime\Core\Public\Misc\CommandLine.h" />
+    <ClInclude Include="..\Source\Runtime\Core\Public\Misc\ConfigCacheIni.h" />
+    <ClInclude Include="..\Source\Runtime\Core\Public\Misc\Guid.h" />
+    <ClInclude Include="..\Source\Runtime\Core\Public\Misc\Paths.h" />
+    <ClInclude Include="..\Source\Runtime\CoreUObject\Public\UObject\CoreUObjectSignatures.h" />
+    <ClInclude Include="..\Source\Runtime\CoreUObject\Public\UObject\ObjectHandle.h" />
+    <ClInclude Include="..\Source\Runtime\CoreUObject\Public\UObject\UnrealLayout.h" />
+    <ClInclude Include="..\Source\Runtime\CoreUObject\Public\UObject\UnrealRuntime.h" />
+    <ClInclude Include="..\Source\Runtime\CoreUObject\Public\UObject\UnrealTypes.h" />
+    <ClInclude Include="..\Source\Runtime\Engine\Public\Engine\EngineRuntime.h" />
+    <ClInclude Include="..\Source\Runtime\Engine\Public\Engine\EngineSignatures.h" />
+    <ClInclude Include="..\Source\Runtime\Engine\Public\Engine\NetworkHooks.h" />
+    <ClInclude Include="..\Source\Runtime\Engine\Public\Engine\ObjectWrapper.h" />
+    <ClInclude Include="..\Source\Runtime\Engine\Public\Engine\World.h" />
+    <ClInclude Include="..\Source\Runtime\RemoteProcess\Public\GameThreadBridge.h" />
+    <ClInclude Include="..\Source\Runtime\RemoteProcess\Public\InstructionDecoder.h" />
+    <ClInclude Include="..\Source\Runtime\RemoteProcess\Public\ModuleImage.h" />
+    <ClInclude Include="..\Source\Runtime\RemoteProcess\Public\ProcessAttachment.h" />
+    <ClInclude Include="..\Source\Runtime\RemoteProcess\Public\RemoteAllocation.h" />
+    <ClInclude Include="..\Source\Runtime\RemoteProcess\Public\RemoteDetour.h" />
+    <ClInclude Include="..\Source\Runtime\RemoteProcess\Public\RemoteMemory.h" />
+    <ClInclude Include="..\Source\Runtime\RemoteProcess\Public\SignatureScanner.h" />
+    <ClInclude Include="..\Source\Runtime\RemoteProcess\Public\X64Emitter.h" />
+    <ClInclude Include="..\Source\Server\Public\GameServerHost.h" />
+    <ClInclude Include="..\Source\Server\Public\ServerSettings.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\Source\FortniteGame\Private\Athena\FortAthenaMatch.cpp" />
+    <ClCompile Include="..\Source\FortniteGame\Private\Athena\FortGameModeAthena.cpp" />
+    <ClCompile Include="..\Source\FortniteGame\Private\Athena\FortGameStateAthena.cpp" />
+    <ClCompile Include="..\Source\FortniteGame\Private\Gameplay\FortAbilitySet.cpp" />
+    <ClCompile Include="..\Source\FortniteGame\Private\Gameplay\FortAircraft.cpp" />
+    <ClCompile Include="..\Source\FortniteGame\Private\Gameplay\FortSafeZone.cpp" />
+    <ClCompile Include="..\Source\FortniteGame\Private\Inventory\FortInventory.cpp" />
+    <ClCompile Include="..\Source\FortniteGame\Private\Player\FortPlayerBootstrap.cpp" />
+    <ClCompile Include="..\Source\FortniteGame\Private\Player\FortPlayerControllerAthena.cpp" />
+    <ClCompile Include="..\Source\FortniteGame\Private\Player\FortTeamRoster.cpp" />
+    <ClCompile Include="..\Source\Launch\Private\LaunchServer.cpp" />
+    <ClCompile Include="..\Source\Runtime\Core\Private\Containers\StringConv.cpp" />
+    <ClCompile Include="..\Source\Runtime\Core\Private\HAL\WindowsPlatform.cpp" />
+    <ClCompile Include="..\Source\Runtime\Core\Private\Logging\LogMacros.cpp" />
+    <ClCompile Include="..\Source\Runtime\Core\Private\Math\RandomStream.cpp" />
+    <ClCompile Include="..\Source\Runtime\Core\Private\Math\Rotator.cpp" />
+    <ClCompile Include="..\Source\Runtime\Core\Private\Misc\CommandLine.cpp" />
+    <ClCompile Include="..\Source\Runtime\Core\Private\Misc\ConfigCacheIni.cpp" />
+    <ClCompile Include="..\Source\Runtime\Core\Private\Misc\Guid.cpp" />
+    <ClCompile Include="..\Source\Runtime\Core\Private\Misc\Paths.cpp" />
+    <ClCompile Include="..\Source\Runtime\CoreUObject\Private\UObject\ObjectHandle.cpp" />
+    <ClCompile Include="..\Source\Runtime\CoreUObject\Private\UObject\UnrealRuntime.cpp" />
+    <ClCompile Include="..\Source\Runtime\Engine\Private\Engine\EngineRuntime.cpp" />
+    <ClCompile Include="..\Source\Runtime\Engine\Private\Engine\NetworkHooks.cpp" />
+    <ClCompile Include="..\Source\Runtime\Engine\Private\Engine\World.cpp" />
+    <ClCompile Include="..\Source\Runtime\RemoteProcess\Private\GameThreadBridge.cpp" />
+    <ClCompile Include="..\Source\Runtime\RemoteProcess\Private\InstructionDecoder.cpp" />
+    <ClCompile Include="..\Source\Runtime\RemoteProcess\Private\ModuleImage.cpp" />
+    <ClCompile Include="..\Source\Runtime\RemoteProcess\Private\ProcessAttachment.cpp" />
+    <ClCompile Include="..\Source\Runtime\RemoteProcess\Private\RemoteAllocation.cpp" />
+    <ClCompile Include="..\Source\Runtime\RemoteProcess\Private\RemoteDetour.cpp" />
+    <ClCompile Include="..\Source\Runtime\RemoteProcess\Private\RemoteMemory.cpp" />
+    <ClCompile Include="..\Source\Runtime\RemoteProcess\Private\SignatureScanner.cpp" />
+    <ClCompile Include="..\Source\Runtime\RemoteProcess\Private\X64Emitter.cpp" />
+    <ClCompile Include="..\Source\Server\Private\GameServerHost.cpp" />
+    <ClCompile Include="..\Source\Server\Private\ServerSettings.cpp" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+</Project>

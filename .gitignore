@@ -1,0 +1,17 @@
+Binaries/
+Intermediate/
+Saved/
+.vs/
+x64/
+build/
+out/
+*.user
+*.suo
+*.sdf
+*.opendb
+*.VC.db
+*.exe
+*.pdb
+*.ilk
+*.obj
+*.log

@@ -1,0 +1,387 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="FortniteGame">
+      <UniqueIdentifier>{A7398BE8-446D-5DB3-92AB-9A67545F6C71}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="FortniteGame\Private">
+      <UniqueIdentifier>{8AE00761-BFCC-55C2-8DA5-1C54D20DD932}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="FortniteGame\Private\Athena">
+      <UniqueIdentifier>{284D5D92-86D3-5022-AFBE-248875ADE64A}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="FortniteGame\Private\Gameplay">
+      <UniqueIdentifier>{EBC0D2E8-38B9-518D-BCCD-0A7D4C18E235}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="FortniteGame\Private\Inventory">
+      <UniqueIdentifier>{0273E8FF-E1B1-52B7-8FC7-9F31708B03B1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="FortniteGame\Private\Player">
+      <UniqueIdentifier>{A216740D-A8BF-5315-8C29-30C85E7D34C5}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="FortniteGame\Public">
+      <UniqueIdentifier>{94DCE417-8D41-5F86-BE0D-0DBE6C50508F}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="FortniteGame\Public\Athena">
+      <UniqueIdentifier>{E515B583-470F-564E-BA6C-EF3A1F5379A8}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="FortniteGame\Public\Gameplay">
+      <UniqueIdentifier>{AFC0822D-DBA7-5FC7-A52A-33D878217D26}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="FortniteGame\Public\Inventory">
+      <UniqueIdentifier>{31FE284C-DB7A-54DB-8956-0A9CC200DB7F}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="FortniteGame\Public\Player">
+      <UniqueIdentifier>{0F9DF990-4B1C-52BC-BEF2-8D9A9D0D551E}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Launch">
+      <UniqueIdentifier>{041AE28B-E3AC-55F9-A56F-B70FFB7D6CF3}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Launch\Private">
+      <UniqueIdentifier>{BBDCD6A9-9D1A-5D8D-B050-FFA80EA3ABB2}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Launch\Public">
+      <UniqueIdentifier>{DADC2DF2-B0BD-51F8-96FD-13A0322ED132}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Runtime">
+      <UniqueIdentifier>{40BAE878-FAB0-555C-BE73-73948B19B90B}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Runtime\Core">
+      <UniqueIdentifier>{3625B094-9598-5CFC-B265-9A6474717A64}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Runtime\CoreUObject">
+      <UniqueIdentifier>{CE67902E-E0A0-59A6-9B6A-4747548929CA}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Runtime\CoreUObject\Private">
+      <UniqueIdentifier>{38D4BD7A-2154-5F2C-9C12-89118409B57F}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Runtime\CoreUObject\Private\UObject">
+      <UniqueIdentifier>{AD553DFA-491C-52DE-9F5F-AAF371E4E1AC}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Runtime\CoreUObject\Public">
+      <UniqueIdentifier>{7E944567-E525-52CC-822B-E1F9A65B5AF1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Runtime\CoreUObject\Public\UObject">
+      <UniqueIdentifier>{FE09C253-6405-5D87-B2AB-46FA9EDE21F0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Runtime\Core\Private">
+      <UniqueIdentifier>{A5DEBB6A-5DB3-56DA-8066-4C1C6B902164}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Runtime\Core\Private\Containers">
+      <UniqueIdentifier>{C28EC356-FA4E-53E7-A3EC-0EE2815EC2AD}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Runtime\Core\Private\HAL">
+      <UniqueIdentifier>{4B364FC1-F7E7-54D9-B8D9-50A808C89C6E}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Runtime\Core\Private\Logging">
+      <UniqueIdentifier>{12806E43-4777-5F40-94C4-80B8EDA5B6D7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Runtime\Core\Private\Math">
+      <UniqueIdentifier>{C68877F7-8407-577C-8D0F-D54203C3E68C}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Runtime\Core\Private\Misc">
+      <UniqueIdentifier>{E1F1A811-FB26-575B-8A7A-4BD90A348AAB}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Runtime\Core\Public">
+      <UniqueIdentifier>{293378E8-3266-59C7-AB92-088C63425DB5}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Runtime\Core\Public\Containers">
+      <UniqueIdentifier>{6675CB3E-ECF8-5AF1-8F78-36C7E4D569CF}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Runtime\Core\Public\HAL">
+      <UniqueIdentifier>{68C30616-0176-55FF-B0BF-CD6FBE3210B2}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Runtime\Core\Public\Logging">
+      <UniqueIdentifier>{FC173364-C683-5422-B4D3-4EA570F0A02F}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Runtime\Core\Public\Math">
+      <UniqueIdentifier>{745FC31F-E62B-5F35-8CEA-5FD83635CEFF}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Runtime\Core\Public\Misc">
+      <UniqueIdentifier>{3C24B772-D0D9-586F-B69D-4184023B1CC4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Runtime\Engine">
+      <UniqueIdentifier>{406B4835-A323-5063-B4E9-D125BA2911DF}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Runtime\Engine\Private">
+      <UniqueIdentifier>{6FCB7F74-22DE-522C-9061-3223EBA227E8}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Runtime\Engine\Private\Engine">
+      <UniqueIdentifier>{0632209A-BAB2-517C-B9EE-23994B9EC8A6}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Runtime\Engine\Public">
+      <UniqueIdentifier>{BBA7EB35-329F-56EF-981A-BE3583AC03B2}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Runtime\Engine\Public\Engine">
+      <UniqueIdentifier>{542DB1DC-0D5E-556C-8E10-A7C4BE0C39FD}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Runtime\RemoteProcess">
+      <UniqueIdentifier>{0858C7A4-B132-53FD-9432-360AA93007BE}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Runtime\RemoteProcess\Private">
+      <UniqueIdentifier>{3AB4F53D-7326-505E-BEE4-9750B3992F55}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Runtime\RemoteProcess\Public">
+      <UniqueIdentifier>{067A30C2-F5F7-5166-8537-70F78F619AC1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Server">
+      <UniqueIdentifier>{1F5BC876-DCA1-5D27-AF28-D5FD7BA9F963}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Server\Private">
+      <UniqueIdentifier>{2BB86A1B-90E0-508A-B219-5B7F4CAB4342}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Server\Public">
+      <UniqueIdentifier>{30B4F9FA-0BDA-5E59-8F7B-94E8A73C74D0}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\Source\FortniteGame\Public\Athena\FortAthenaMatch.h">
+      <Filter>FortniteGame\Public\Athena</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\FortniteGame\Public\Athena\FortGameModeAthena.h">
+      <Filter>FortniteGame\Public\Athena</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\FortniteGame\Public\Athena\FortGameStateAthena.h">
+      <Filter>FortniteGame\Public\Athena</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\FortniteGame\Public\Gameplay\FortAbilitySet.h">
+      <Filter>FortniteGame\Public\Gameplay</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\FortniteGame\Public\Gameplay\FortAircraft.h">
+      <Filter>FortniteGame\Public\Gameplay</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\FortniteGame\Public\Gameplay\FortAthenaTypes.h">
+      <Filter>FortniteGame\Public\Gameplay</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\FortniteGame\Public\Gameplay\FortSafeZone.h">
+      <Filter>FortniteGame\Public\Gameplay</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\FortniteGame\Public\Inventory\FortInventory.h">
+      <Filter>FortniteGame\Public\Inventory</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\FortniteGame\Public\Player\FortPlayerBootstrap.h">
+      <Filter>FortniteGame\Public\Player</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\FortniteGame\Public\Player\FortPlayerControllerAthena.h">
+      <Filter>FortniteGame\Public\Player</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\FortniteGame\Public\Player\FortTeamRoster.h">
+      <Filter>FortniteGame\Public\Player</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\Launch\Public\LaunchServer.h">
+      <Filter>Launch\Public</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\Runtime\Core\Public\Containers\StringConv.h">
+      <Filter>Runtime\Core\Public\Containers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\Runtime\Core\Public\CoreMinimal.h">
+      <Filter>Runtime\Core\Public</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\Runtime\Core\Public\CoreTypes.h">
+      <Filter>Runtime\Core\Public</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\Runtime\Core\Public\HAL\WindowsPlatform.h">
+      <Filter>Runtime\Core\Public\HAL</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\Runtime\Core\Public\Logging\LogMacros.h">
+      <Filter>Runtime\Core\Public\Logging</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\Runtime\Core\Public\Math\RandomStream.h">
+      <Filter>Runtime\Core\Public\Math</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\Runtime\Core\Public\Math\Rotator.h">
+      <Filter>Runtime\Core\Public\Math</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\Runtime\Core\Public\Math\Transform.h">
+      <Filter>Runtime\Core\Public\Math</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\Runtime\Core\Public\Math\Vector.h">
+      <Filter>Runtime\Core\Public\Math</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\Runtime\Core\Public\Misc\CommandLine.h">
+      <Filter>Runtime\Core\Public\Misc</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\Runtime\Core\Public\Misc\ConfigCacheIni.h">
+      <Filter>Runtime\Core\Public\Misc</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\Runtime\Core\Public\Misc\Guid.h">
+      <Filter>Runtime\Core\Public\Misc</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\Runtime\Core\Public\Misc\Paths.h">
+      <Filter>Runtime\Core\Public\Misc</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\Runtime\CoreUObject\Public\UObject\CoreUObjectSignatures.h">
+      <Filter>Runtime\CoreUObject\Public\UObject</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\Runtime\CoreUObject\Public\UObject\ObjectHandle.h">
+      <Filter>Runtime\CoreUObject\Public\UObject</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\Runtime\CoreUObject\Public\UObject\UnrealLayout.h">
+      <Filter>Runtime\CoreUObject\Public\UObject</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\Runtime\CoreUObject\Public\UObject\UnrealRuntime.h">
+      <Filter>Runtime\CoreUObject\Public\UObject</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\Runtime\CoreUObject\Public\UObject\UnrealTypes.h">
+      <Filter>Runtime\CoreUObject\Public\UObject</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\Runtime\Engine\Public\Engine\EngineRuntime.h">
+      <Filter>Runtime\Engine\Public\Engine</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\Runtime\Engine\Public\Engine\EngineSignatures.h">
+      <Filter>Runtime\Engine\Public\Engine</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\Runtime\Engine\Public\Engine\NetworkHooks.h">
+      <Filter>Runtime\Engine\Public\Engine</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\Runtime\Engine\Public\Engine\ObjectWrapper.h">
+      <Filter>Runtime\Engine\Public\Engine</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\Runtime\Engine\Public\Engine\World.h">
+      <Filter>Runtime\Engine\Public\Engine</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\Runtime\RemoteProcess\Public\GameThreadBridge.h">
+      <Filter>Runtime\RemoteProcess\Public</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\Runtime\RemoteProcess\Public\InstructionDecoder.h">
+      <Filter>Runtime\RemoteProcess\Public</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\Runtime\RemoteProcess\Public\ModuleImage.h">
+      <Filter>Runtime\RemoteProcess\Public</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\Runtime\RemoteProcess\Public\ProcessAttachment.h">
+      <Filter>Runtime\RemoteProcess\Public</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\Runtime\RemoteProcess\Public\RemoteAllocation.h">
+      <Filter>Runtime\RemoteProcess\Public</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\Runtime\RemoteProcess\Public\RemoteDetour.h">
+      <Filter>Runtime\RemoteProcess\Public</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\Runtime\RemoteProcess\Public\RemoteMemory.h">
+      <Filter>Runtime\RemoteProcess\Public</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\Runtime\RemoteProcess\Public\SignatureScanner.h">
+      <Filter>Runtime\RemoteProcess\Public</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\Runtime\RemoteProcess\Public\X64Emitter.h">
+      <Filter>Runtime\RemoteProcess\Public</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\Server\Public\GameServerHost.h">
+      <Filter>Server\Public</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\Server\Public\ServerSettings.h">
+      <Filter>Server\Public</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\Source\FortniteGame\Private\Athena\FortAthenaMatch.cpp">
+      <Filter>FortniteGame\Private\Athena</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\FortniteGame\Private\Athena\FortGameModeAthena.cpp">
+      <Filter>FortniteGame\Private\Athena</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\FortniteGame\Private\Athena\FortGameStateAthena.cpp">
+      <Filter>FortniteGame\Private\Athena</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\FortniteGame\Private\Gameplay\FortAbilitySet.cpp">
+      <Filter>FortniteGame\Private\Gameplay</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\FortniteGame\Private\Gameplay\FortAircraft.cpp">
+      <Filter>FortniteGame\Private\Gameplay</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\FortniteGame\Private\Gameplay\FortSafeZone.cpp">
+      <Filter>FortniteGame\Private\Gameplay</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\FortniteGame\Private\Inventory\FortInventory.cpp">
+      <Filter>FortniteGame\Private\Inventory</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\FortniteGame\Private\Player\FortPlayerBootstrap.cpp">
+      <Filter>FortniteGame\Private\Player</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\FortniteGame\Private\Player\FortPlayerControllerAthena.cpp">
+      <Filter>FortniteGame\Private\Player</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\FortniteGame\Private\Player\FortTeamRoster.cpp">
+      <Filter>FortniteGame\Private\Player</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\Launch\Private\LaunchServer.cpp">
+      <Filter>Launch\Private</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\Runtime\Core\Private\Containers\StringConv.cpp">
+      <Filter>Runtime\Core\Private\Containers</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\Runtime\Core\Private\HAL\WindowsPlatform.cpp">
+      <Filter>Runtime\Core\Private\HAL</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\Runtime\Core\Private\Logging\LogMacros.cpp">
+      <Filter>Runtime\Core\Private\Logging</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\Runtime\Core\Private\Math\RandomStream.cpp">
+      <Filter>Runtime\Core\Private\Math</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\Runtime\Core\Private\Math\Rotator.cpp">
+      <Filter>Runtime\Core\Private\Math</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\Runtime\Core\Private\Misc\CommandLine.cpp">
+      <Filter>Runtime\Core\Private\Misc</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\Runtime\Core\Private\Misc\ConfigCacheIni.cpp">
+      <Filter>Runtime\Core\Private\Misc</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\Runtime\Core\Private\Misc\Guid.cpp">
+      <Filter>Runtime\Core\Private\Misc</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\Runtime\Core\Private\Misc\Paths.cpp">
+      <Filter>Runtime\Core\Private\Misc</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\Runtime\CoreUObject\Private\UObject\ObjectHandle.cpp">
+      <Filter>Runtime\CoreUObject\Private\UObject</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\Runtime\CoreUObject\Private\UObject\UnrealRuntime.cpp">
+      <Filter>Runtime\CoreUObject\Private\UObject</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\Runtime\Engine\Private\Engine\EngineRuntime.cpp">
+      <Filter>Runtime\Engine\Private\Engine</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\Runtime\Engine\Private\Engine\NetworkHooks.cpp">
+      <Filter>Runtime\Engine\Private\Engine</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\Runtime\Engine\Private\Engine\World.cpp">
+      <Filter>Runtime\Engine\Private\Engine</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\Runtime\RemoteProcess\Private\GameThreadBridge.cpp">
+      <Filter>Runtime\RemoteProcess\Private</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\Runtime\RemoteProcess\Private\InstructionDecoder.cpp">
+      <Filter>Runtime\RemoteProcess\Private</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\Runtime\RemoteProcess\Private\ModuleImage.cpp">
+      <Filter>Runtime\RemoteProcess\Private</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\Runtime\RemoteProcess\Private\ProcessAttachment.cpp">
+      <Filter>Runtime\RemoteProcess\Private</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\Runtime\RemoteProcess\Private\RemoteAllocation.cpp">
+      <Filter>Runtime\RemoteProcess\Private</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\Runtime\RemoteProcess\Private\RemoteDetour.cpp">
+      <Filter>Runtime\RemoteProcess\Private</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\Runtime\RemoteProcess\Private\RemoteMemory.cpp">
+      <Filter>Runtime\RemoteProcess\Private</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\Runtime\RemoteProcess\Private\SignatureScanner.cpp">
+      <Filter>Runtime\RemoteProcess\Private</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\Runtime\RemoteProcess\Private\X64Emitter.cpp">
+      <Filter>Runtime\RemoteProcess\Private</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\Server\Private\GameServerHost.cpp">
+      <Filter>Server\Private</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\Server\Private\ServerSettings.cpp">
+      <Filter>Server\Private</Filter>
+    </ClCompile>
+  </ItemGroup>
+</Project>
