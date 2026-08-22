@@ -27,6 +27,7 @@ struct FAthenaMatchSettings
     bool bAllowJoinInProgress = false;
     bool bAllowSpectateAfterDeath = true;
     bool bFriendlyFireEnabled = false;
+    bool bUseGameSessions = false;
 
     FPlayerBootstrapSettings PlayerSettings;
 };

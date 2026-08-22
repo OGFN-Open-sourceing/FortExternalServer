@@ -1,4 +1,5 @@
 #include "Server/Public/GameServerHost.h"
+#include "FortniteGame/Public/Versioning/FortBuildProfile.h"
 #include "Runtime/Core/Public/Misc/Paths.h"
 
 #include <cmath>
@@ -13,6 +14,8 @@ namespace
     constexpr uint64 AthenaWorldTimeoutMilliseconds = 300000;
     constexpr uint64 StatusIntervalMilliseconds = 15000;
     constexpr uint64 PumpWarmupTimeoutMilliseconds = 60000;
+    constexpr uint64 AttachTimeoutMilliseconds = 180000;
+    constexpr uint64 FrameTickIntervalMilliseconds = 100;
 }
 
 bool FGameServerHost::ResolveBuildRoot()
@@ -40,9 +43,9 @@ bool FGameServerHost::AttachToGameProcess()
     const std::wstring ExecutablePath = Settings.GetGameExecutablePath(BuildRoot);
     const std::wstring ExecutableName = Settings.GetGameExecutableName();
 
-    if (Settings.GetProcess().bAttachToRunningProcess)
+    if (Settings.ShouldAttachToRunningProcess())
     {
-        return Process.AttachToRunning(ExecutableName, Settings.GetProcess().AttachTimeoutSeconds * 1000);
+        return Process.AttachToRunning(ExecutableName, AttachTimeoutMilliseconds);
     }
 
     if (!FPaths::FileExists(ExecutablePath))
@@ -148,23 +151,23 @@ bool FGameServerHost::VerifyBuildVersion()
     if (!UnrealRuntime.RefreshVersionInfo())
     {
         UE_LOG_WARNING("Host", "The engine version string could not be read from the game");
-        return !Settings.GetEngineExpectations().bEnforceVersionMatch;
+        return !Settings.ShouldEnforceVersionMatch();
     }
 
     const FEngineVersionInfo& VersionInfo = UnrealRuntime.GetVersionInfo();
-    const FEngineExpectations& Expected = Settings.GetEngineExpectations();
+    const int32 ExpectedChangelist = GetActiveBuildProfile().Changelist;
 
     UE_LOG_DISPLAY("Host", "Detected changelist " + std::to_string(VersionInfo.Changelist) + " on engine " + std::to_string(VersionInfo.EngineVersion));
 
-    if (!Expected.bEnforceVersionMatch)
+    if (!Settings.ShouldEnforceVersionMatch())
     {
         return true;
     }
 
-    if (VersionInfo.Changelist != 0 && VersionInfo.Changelist != Expected.Changelist)
+    if (VersionInfo.Changelist != 0 && VersionInfo.Changelist != ExpectedChangelist)
     {
-        UE_LOG_ERROR("Host", "This build reports changelist " + std::to_string(VersionInfo.Changelist) + " but the server targets " + std::to_string(Expected.Changelist));
-        UE_LOG_ERROR("Host", "Pass -SkipVersionCheck to run anyway");
+        UE_LOG_ERROR("Host", "This build reports changelist " + std::to_string(VersionInfo.Changelist) + " but the server targets " + std::to_string(ExpectedChangelist));
+        UE_LOG_ERROR("Host", "Set bSkipVersionCheck in Configuration.h to run anyway");
         return false;
     }
 
@@ -176,7 +179,7 @@ bool FGameServerHost::InstallHooks()
     Stage = EHostStage::InstallingHooks;
 
     NetworkHooks.SetFrameTickDelegate([this]() { OnGameThreadTick(); });
-    NetworkHooks.SetFrameTickInterval(Settings.GetRuntime().FrameTickIntervalMilliseconds);
+    NetworkHooks.SetFrameTickInterval(FrameTickIntervalMilliseconds);
 
     if (!NetworkHooks.Install(EngineRuntime))
     {
@@ -277,9 +280,9 @@ bool FGameServerHost::Start()
         return false;
     }
 
-    Settings.Load(BuildRoot);
+    Settings.Resolve();
 
-    FServerLog::Initialize(FPaths::Combine(BuildRoot, Settings.GetLogging().LogFileRelativePath), Settings.GetLogging().Verbosity);
+    FServerLog::Initialize(FPaths::Combine(BuildRoot, Settings.GetLogFileRelativePath()), Settings.GetLogVerbosity());
 
     FWindowsPlatform::SetConsoleTitleText(L"FortExternalServer");
 
@@ -325,16 +328,11 @@ bool FGameServerHost::Start()
         return false;
     }
 
-    if (Settings.GetRuntime().bDumpObjectsOnStart)
-    {
-        UnrealRuntime.DumpObjectsToFile(FPaths::Combine(BuildRoot, L"Saved\\ObjectDump.txt"));
-    }
-
     const UNetDriver NetDriver = EngineRuntime.GetWorld().GetNetDriver();
-    if (NetDriver && Settings.GetRuntime().MaxTickRate > 0)
+    if (NetDriver && Settings.GetMaxTickRate() > 0)
     {
         UNetDriver MutableNetDriver = NetDriver;
-        MutableNetDriver.SetNetServerMaxTickRate(Settings.GetRuntime().MaxTickRate);
+        MutableNetDriver.SetNetServerMaxTickRate(Settings.GetMaxTickRate());
     }
 
     Stage = EHostStage::RunningMatch;
@@ -433,7 +431,7 @@ void FGameServerHost::PrintStatus() const
 
 void FGameServerHost::ProcessConsoleInput()
 {
-    if (!Settings.GetRuntime().bEnableConsoleCommands || _kbhit() == 0)
+    if (!Settings.AreConsoleCommandsEnabled() || _kbhit() == 0)
     {
         return;
     }

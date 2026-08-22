@@ -16,11 +16,16 @@ int32 AFortPlayerStateAthena::GetTeamIndex() const
     return Object.GetProperty<uint8>("TeamIndex", 0);
 }
 
-void AFortPlayerStateAthena::SetTeamIndex(int32 Value)
+void AFortPlayerStateAthena::SetTeamIndex(int32 Value, bool bAssignSquadId)
 {
     Object.SetProperty<uint8>("TeamIndex", static_cast<uint8>(Value));
-    Object.SetProperty<uint8>("SquadId", static_cast<uint8>(Value));
     Object.InvokeFunction("OnRep_TeamIndex");
+
+    if (bAssignSquadId)
+    {
+        SetSquadId(static_cast<uint8>(Value));
+    }
+
     ForceNetUpdate();
 }
 

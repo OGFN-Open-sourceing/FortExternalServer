@@ -1,5 +1,4 @@
 #include "Launch/Public/LaunchServer.h"
-#include "Runtime/Core/Public/Misc/CommandLine.h"
 #include "Server/Public/GameServerHost.h"
 
 #include <cstdio>
@@ -41,10 +40,8 @@ namespace FLaunchServer
         std::printf("\x1b[0m\n");
     }
 
-    int Run(int ArgumentCount, char** Arguments)
+    int Run()
     {
-        FCommandLine::Initialize(ArgumentCount, Arguments);
-
         PrintBanner();
 
         FGameServerHost Host;
@@ -73,21 +70,5 @@ namespace FLaunchServer
 
 int wmain(int ArgumentCount, wchar_t** Arguments)
 {
-    std::vector<std::string> NarrowStorage;
-    NarrowStorage.reserve(static_cast<size_t>(ArgumentCount));
-
-    for (int Index = 0; Index < ArgumentCount; ++Index)
-    {
-        NarrowStorage.push_back(FStringConv::ToNarrow(Arguments[Index]));
-    }
-
-    std::vector<char*> NarrowArguments;
-    NarrowArguments.reserve(NarrowStorage.size());
-
-    for (std::string& Argument : NarrowStorage)
-    {
-        NarrowArguments.push_back(Argument.data());
-    }
-
-    return FLaunchServer::Run(ArgumentCount, NarrowArguments.data());
+    return FLaunchServer::Run();
 }

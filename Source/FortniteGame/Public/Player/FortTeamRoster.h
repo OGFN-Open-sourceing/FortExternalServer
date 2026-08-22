@@ -7,7 +7,7 @@
 class FFortTeamRoster
 {
 public:
-    void Initialize(int32 InTeamSize, int32 InTeamCount);
+    void Initialize(int32 InTeamSize, int32 InTeamCount, bool bInUseGameSessions);
 
     void Reset();
 
@@ -38,6 +38,7 @@ private:
 
     int32 TeamSize = 1;
     int32 TeamCount = 100;
+    bool bUseGameSessions = false;
 
     std::map<FRemoteAddress, int32> ControllerToTeam;
     std::map<int32, std::vector<FRemoteAddress>> TeamToControllers;

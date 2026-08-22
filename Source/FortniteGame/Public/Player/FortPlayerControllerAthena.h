@@ -12,7 +12,7 @@ public:
 
     int32 GetTeamIndex() const;
 
-    void SetTeamIndex(int32 Value);
+    void SetTeamIndex(int32 Value, bool bAssignSquadId);
 
     void SetSquadId(uint8 Value);
 

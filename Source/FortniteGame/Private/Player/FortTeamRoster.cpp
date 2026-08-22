@@ -2,10 +2,11 @@
 
 #include <algorithm>
 
-void FFortTeamRoster::Initialize(int32 InTeamSize, int32 InTeamCount)
+void FFortTeamRoster::Initialize(int32 InTeamSize, int32 InTeamCount, bool bInUseGameSessions)
 {
     TeamSize = std::max(InTeamSize, 1);
     TeamCount = std::max(InTeamCount, 1);
+    bUseGameSessions = bInUseGameSessions;
     Reset();
 }
 
@@ -45,6 +46,20 @@ int32 FFortTeamRoster::AssignPlayer(const AFortPlayerControllerAthena& Controlle
         return Existing->second;
     }
 
+    AFortPlayerStateAthena ExistingState = Controller.GetPlayerState();
+
+    if (bUseGameSessions && ExistingState && ExistingState.GetTeamIndex() >= FirstPlayerTeamIndex)
+    {
+        const int32 SessionTeam = ExistingState.GetTeamIndex();
+
+        ControllerToTeam[Key] = SessionTeam;
+        TeamToControllers[SessionTeam].push_back(Key);
+        EliminatedControllers[Key] = false;
+
+        UE_LOG_DISPLAY("Teams", "Keeping the game session team " + std::to_string(SessionTeam));
+        return SessionTeam;
+    }
+
     const int32 Team = FindTeamWithSpace();
     if (Team == InvalidIndex)
     {
@@ -56,10 +71,9 @@ int32 FFortTeamRoster::AssignPlayer(const AFortPlayerControllerAthena& Controlle
     TeamToControllers[Team].push_back(Key);
     EliminatedControllers[Key] = false;
 
-    AFortPlayerStateAthena PlayerState = Controller.GetPlayerState();
-    if (PlayerState)
+    if (ExistingState)
     {
-        PlayerState.SetTeamIndex(Team);
+        ExistingState.SetTeamIndex(Team, !bUseGameSessions);
     }
 
     UE_LOG_DISPLAY("Teams", "Assigned player to team " + std::to_string(Team));

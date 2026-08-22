@@ -10,7 +10,7 @@ bool FFortAthenaMatch::Initialize(FEngineRuntime& InEngineRuntime, FNetworkHooks
     Settings = InSettings;
 
     PlayerBootstrap.Initialize(InEngineRuntime, Settings.PlayerSettings);
-    TeamRoster.Initialize(Settings.TeamSize, std::max(Settings.MaxPlayers / std::max(Settings.TeamSize, 1), 1));
+    TeamRoster.Initialize(Settings.TeamSize, std::max(Settings.MaxPlayers / std::max(Settings.TeamSize, 1), 1), Settings.bUseGameSessions);
 
     bInitialized = true;
     return true;

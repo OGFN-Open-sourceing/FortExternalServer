@@ -6,5 +6,5 @@ namespace FLaunchServer
 {
     void PrintBanner();
 
-    int Run(int ArgumentCount, char** Arguments);
+    int Run();
 }

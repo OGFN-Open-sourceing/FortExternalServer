@@ -59,6 +59,16 @@ namespace
         Profile.AircraftAltitude = 12000.0f;
         Profile.SkydiveDropHeight = 10000.0f;
 
+        Profile.AircraftFlightSeconds = 45.0f;
+        Profile.SafeZoneStartDelaySeconds = 30.0f;
+        Profile.EndOfMatchDelaySeconds = 15.0f;
+
+        Profile.StartingHealth = 100.0f;
+        Profile.StartingShield = 0.0f;
+        Profile.MaxHealth = 100.0f;
+        Profile.MaxShield = 100.0f;
+        Profile.BackpackSize = 5;
+
         return Profile;
     }
 }

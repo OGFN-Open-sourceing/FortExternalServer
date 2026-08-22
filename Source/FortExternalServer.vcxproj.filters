@@ -207,12 +207,6 @@
     <ClInclude Include="..\Source\Runtime\Core\Public\Math\Vector.h">
       <Filter>Runtime\Core\Public\Math</Filter>
     </ClInclude>
-    <ClInclude Include="..\Source\Runtime\Core\Public\Misc\CommandLine.h">
-      <Filter>Runtime\Core\Public\Misc</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Source\Runtime\Core\Public\Misc\ConfigCacheIni.h">
-      <Filter>Runtime\Core\Public\Misc</Filter>
-    </ClInclude>
     <ClInclude Include="..\Source\Runtime\Core\Public\Misc\Guid.h">
       <Filter>Runtime\Core\Public\Misc</Filter>
     </ClInclude>
@@ -337,12 +331,6 @@
     </ClCompile>
     <ClCompile Include="..\Source\Runtime\Core\Private\Math\Rotator.cpp">
       <Filter>Runtime\Core\Private\Math</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Source\Runtime\Core\Private\Misc\CommandLine.cpp">
-      <Filter>Runtime\Core\Private\Misc</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Source\Runtime\Core\Private\Misc\ConfigCacheIni.cpp">
-      <Filter>Runtime\Core\Private\Misc</Filter>
     </ClCompile>
     <ClCompile Include="..\Source\Runtime\Core\Private\Misc\Guid.cpp">
       <Filter>Runtime\Core\Private\Misc</Filter>

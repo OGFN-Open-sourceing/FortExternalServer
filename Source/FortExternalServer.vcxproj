@@ -88,8 +88,6 @@
     <ClInclude Include="..\Source\Runtime\Core\Public\Math\Rotator.h" />
     <ClInclude Include="..\Source\Runtime\Core\Public\Math\Transform.h" />
     <ClInclude Include="..\Source\Runtime\Core\Public\Math\Vector.h" />
-    <ClInclude Include="..\Source\Runtime\Core\Public\Misc\CommandLine.h" />
-    <ClInclude Include="..\Source\Runtime\Core\Public\Misc\ConfigCacheIni.h" />
     <ClInclude Include="..\Source\Runtime\Core\Public\Misc\Guid.h" />
     <ClInclude Include="..\Source\Runtime\Core\Public\Misc\Paths.h" />
     <ClInclude Include="..\Source\Runtime\CoreUObject\Public\UObject\CoreUObjectSignatures.h" />
@@ -133,8 +131,6 @@
     <ClCompile Include="..\Source\Runtime\Core\Private\Logging\LogMacros.cpp" />
     <ClCompile Include="..\Source\Runtime\Core\Private\Math\RandomStream.cpp" />
     <ClCompile Include="..\Source\Runtime\Core\Private\Math\Rotator.cpp" />
-    <ClCompile Include="..\Source\Runtime\Core\Private\Misc\CommandLine.cpp" />
-    <ClCompile Include="..\Source\Runtime\Core\Private\Misc\ConfigCacheIni.cpp" />
     <ClCompile Include="..\Source\Runtime\Core\Private\Misc\Guid.cpp" />
     <ClCompile Include="..\Source\Runtime\Core\Private\Misc\Paths.cpp" />
     <ClCompile Include="..\Source\Runtime\CoreUObject\Private\UObject\ObjectHandle.cpp" />

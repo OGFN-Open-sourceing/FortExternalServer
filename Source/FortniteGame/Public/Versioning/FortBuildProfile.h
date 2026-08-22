@@ -59,6 +59,16 @@ struct FFortBuildProfile
     float AircraftAltitude = 0.0f;
     float SkydiveDropHeight = 0.0f;
 
+    float AircraftFlightSeconds = 45.0f;
+    float SafeZoneStartDelaySeconds = 30.0f;
+    float EndOfMatchDelaySeconds = 15.0f;
+
+    float StartingHealth = 100.0f;
+    float StartingShield = 0.0f;
+    float MaxHealth = 100.0f;
+    float MaxShield = 100.0f;
+    int32 BackpackSize = 5;
+
     std::string ResolvePlaylistPath(std::string_view Identifier) const;
 
     std::string Describe() const;
