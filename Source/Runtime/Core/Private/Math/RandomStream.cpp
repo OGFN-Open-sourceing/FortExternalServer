@@ -1,5 +1,6 @@
 #include "Runtime/Core/Public/Math/RandomStream.h"
-#include "Runtime/Core/Public/HAL/WindowsPlatform.h"
+#include "Runtime/Core/Public/HAL/PlatformDetection.h"
+#include "Runtime/Core/Public/HAL/PlatformMisc.h"
 
 #include <cmath>
 
@@ -9,7 +10,7 @@ FRandomStream::FRandomStream(uint64 InSeed)
 }
 
 FRandomStream::FRandomStream()
-    : FRandomStream(FWindowsPlatform::GetTimeMilliseconds() * 0x2545F4914F6CDD1Dull + 0x9E3779B97F4A7C15ull)
+    : FRandomStream(FPlatformMisc::GetTimeMilliseconds() * 0x2545F4914F6CDD1Dull + 0x9E3779B97F4A7C15ull)
 {
 }
 

@@ -2,6 +2,31 @@
 
 #include "FortniteGame/Public/Gameplay/FortAthenaTypes.h"
 
+struct FFortAIDefinition
+{
+    std::string DisplayName;
+    std::vector<std::string> Loadout;
+    float Health = 100.0f;
+    float Shield = 0.0f;
+    FVector SpawnLocation = FVector();
+    bool bIsBoss = false;
+
+    bool HasExplicitSpawnLocation() const;
+};
+
+struct FAIProfile
+{
+    std::string BotPawnClassPath;
+    std::string BotControllerClassPath;
+    std::string AIDirectorClassPath;
+    std::string ServerBotManagerClassPath;
+    std::string BotMutatorClassPath;
+    std::vector<std::string> BotLoadout;
+    std::vector<FFortAIDefinition> Bosses;
+
+    bool IsSupported() const;
+};
+
 struct FObjectLayoutProfile
 {
     int32 UObjectSize = 0x28;
@@ -19,7 +44,13 @@ struct FObjectLayoutProfile
     int32 UPropertyOffsetInternal = 0x44;
     int32 UBoolPropertyFieldMask = 0x73;
     int32 ObjectItemStride = 0x18;
+    int32 UStructChildProperties = InvalidIndex;
+    int32 FFieldNext = 0x20;
+    int32 FFieldName = 0x28;
     bool bChunkedObjectArray = false;
+    int32 ObjectsPerChunk = 65536;
+
+    bool UsesFieldProperties() const;
 };
 
 struct FAssetPathProfile
@@ -49,6 +80,7 @@ struct FFortBuildProfile
 
     FObjectLayoutProfile ObjectLayout;
     FAssetPathProfile AssetPaths;
+    FAIProfile AI;
 
     std::vector<std::string> AbilitySets;
     std::vector<FSafeZonePhaseDefinition> SafeZonePhases;

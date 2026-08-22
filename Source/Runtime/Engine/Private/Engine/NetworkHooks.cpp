@@ -154,7 +154,7 @@ FHookResponse FNetworkHooks::HandleTickFlush(const FHookInvocation& Invocation)
 {
     ++FrameCounter;
 
-    const uint64 Now = FWindowsPlatform::GetTimeMilliseconds();
+    const uint64 Now = FPlatformMisc::GetTimeMilliseconds();
 
     if (FrameTickDelegate && Now - LastFrameTickTimestamp >= FrameTickIntervalMilliseconds)
     {

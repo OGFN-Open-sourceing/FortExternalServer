@@ -91,5 +91,11 @@ public:
 
     FObjectHandle SpawnActor(const FObjectHandle& ClassHandle, const FTransform& Transform, const FObjectHandle& Owner) const;
 
+    FObjectHandle BeginDeferredSpawnActor(const FObjectHandle& ClassHandle, const FTransform& Transform) const;
+
+    bool FinishSpawningActor(const FObjectHandle& Actor, const FTransform& Transform) const;
+
+    FObjectHandle GetTransientPackage() const;
+
     bool ExecuteConsoleCommand(const std::string& Command) const;
 };

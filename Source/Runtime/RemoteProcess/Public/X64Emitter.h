@@ -22,6 +22,26 @@ enum class EX64Register : uint8
     R15 = 15
 };
 
+enum class EX64CallingConvention : uint8
+{
+    MicrosoftX64,
+    SystemV
+};
+
+struct FX64AbiLayout
+{
+    EX64CallingConvention Convention = EX64CallingConvention::MicrosoftX64;
+    EX64Register IntegerArgumentRegisters[6] = {};
+    int32 IntegerArgumentCount = 4;
+    int32 ShadowSpaceBytes = 32;
+
+    static FX64AbiLayout GetHostAbi();
+
+    static FX64AbiLayout GetMicrosoftX64();
+
+    static FX64AbiLayout GetSystemV();
+};
+
 enum class EX64Condition : uint8
 {
     Zero = 0x84,

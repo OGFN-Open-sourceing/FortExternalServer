@@ -33,6 +33,21 @@
       }
     },
     {
+      "name": "macos-release",
+      "displayName": "macOS x86_64 Release",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/Intermediate/CMake/macos-release",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_OSX_ARCHITECTURES": "x86_64"
+      },
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Darwin"
+      }
+    },
+    {
       "name": "mingw-release",
       "displayName": "MinGW cross compile Release",
       "generator": "Ninja",
@@ -62,6 +77,10 @@
     {
       "name": "ninja-release",
       "configurePreset": "ninja-release"
+    },
+    {
+      "name": "macos-release",
+      "configurePreset": "macos-release"
     },
     {
       "name": "mingw-release",

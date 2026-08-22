@@ -40,6 +40,8 @@ public:
     std::string DescribeStage() const;
 
 private:
+    static FObjectLayout MakeObjectLayoutFromProfile();
+
     bool ResolveBuildRoot();
 
     bool AttachToGameProcess();

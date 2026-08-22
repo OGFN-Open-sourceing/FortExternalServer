@@ -1,7 +1,8 @@
 #pragma once
 
 #include "Runtime/Core/Public/CoreTypes.h"
-#include "Runtime/Core/Public/HAL/WindowsPlatform.h"
+#include "Runtime/Core/Public/HAL/PlatformDetection.h"
+#include "Runtime/Core/Public/HAL/PlatformMisc.h"
 #include "Runtime/Core/Public/Containers/StringConv.h"
 #include "Runtime/Core/Public/Logging/LogMacros.h"
 #include "Runtime/Core/Public/Math/Vector.h"

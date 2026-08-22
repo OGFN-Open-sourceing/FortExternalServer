@@ -45,7 +45,7 @@ namespace
 
         Layout.ReplicatedEntriesOffset = ReplicatedEntries.Offset;
         Layout.ItemInstancesOffset = ItemInstances.Offset;
-        Layout.EntryStride = Runtime.GetMemory().Read<int32>(ItemEntryStruct.GetAddress() + FUnrealLayout::UStruct_PropertiesSize);
+        Layout.EntryStride = Runtime.GetMemory().Read<int32>(ItemEntryStruct.GetAddress() + Runtime.GetLayout().UStruct_PropertiesSize);
 
         Layout.EntryDefinitionOffset = Runtime.FindPropertyInStruct(ItemEntryStruct.GetAddress(), "ItemDefinition").Offset;
         Layout.EntryCountOffset = Runtime.FindPropertyInStruct(ItemEntryStruct.GetAddress(), "Count").Offset;

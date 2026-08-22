@@ -1,6 +1,7 @@
 #include "Runtime/Core/Public/Logging/LogMacros.h"
 #include "Runtime/Core/Public/Containers/StringConv.h"
-#include "Runtime/Core/Public/HAL/WindowsPlatform.h"
+#include "Runtime/Core/Public/HAL/PlatformDetection.h"
+#include "Runtime/Core/Public/HAL/PlatformMisc.h"
 #include "Runtime/Core/Public/Misc/Paths.h"
 
 #include <cstdio>
@@ -64,7 +65,7 @@ void FServerLog::Initialize(const std::wstring& LogFilePath, ELogVerbosity Verbo
 
     GLogVerbosity = Verbosity;
 
-    FWindowsPlatform::EnableVirtualTerminalProcessing();
+    FPlatformMisc::EnableVirtualTerminalProcessing();
 
     if (LogFilePath.empty())
     {

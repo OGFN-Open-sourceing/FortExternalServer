@@ -27,7 +27,7 @@ public:
 
     bool IsExecutable(FRemoteAddress Address) const;
 
-    bool ProtectRange(FRemoteAddress Address, size_t Size, uint32 NewProtection, uint32& OutOldProtection) const;
+    bool ProtectRange(FRemoteAddress Address, size_t Size, ERemoteProtection Protection) const;
 
     bool FlushInstructionCacheRange(FRemoteAddress Address, size_t Size) const;
 

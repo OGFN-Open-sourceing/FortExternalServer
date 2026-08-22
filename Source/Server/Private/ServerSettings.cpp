@@ -54,6 +54,9 @@ void FServerSettings::Resolve()
     Match.bAllowSpectateAfterDeath = FConfiguration::bSpectateAfterDeath;
     Match.bFriendlyFireEnabled = FConfiguration::bFriendlyFire;
     Match.bUseGameSessions = FConfiguration::bSessions;
+    Match.bPlayerBotsEnabled = FConfiguration::bPlayerBots;
+    Match.PlayerBotCount = FConfiguration::PlayerBotCount;
+    Match.bBossesEnabled = FConfiguration::bBosses;
 
     Match.PlayerSettings.StartingHealth = Profile.StartingHealth;
     Match.PlayerSettings.StartingShield = Profile.StartingShield;
@@ -76,6 +79,9 @@ void FServerSettings::LogResolvedConfiguration() const
         ", bFriendlyFire " + DescribeBool(Match.bFriendlyFireEnabled));
     UE_LOG_DISPLAY("Config", "bHealthRegen " + DescribeBool(Match.PlayerSettings.bHealthRegenEnabled) + ", bSpectateAfterDeath " +
         DescribeBool(Match.bAllowSpectateAfterDeath) + ", bSkipVersionCheck " + DescribeBool(FConfiguration::bSkipVersionCheck));
+
+    UE_LOG_DISPLAY("Config", "bPlayerBots " + DescribeBool(Match.bPlayerBotsEnabled) + " x" + std::to_string(Match.PlayerBotCount) + ", bBosses " +
+        DescribeBool(Match.bBossesEnabled));
 
     for (const std::string& Entry : Match.PlayerSettings.StartingLoadout)
     {

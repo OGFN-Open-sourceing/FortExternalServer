@@ -7,6 +7,9 @@
     <Filter Include="FortniteGame\Private">
       <UniqueIdentifier>{8AE00761-BFCC-55C2-8DA5-1C54D20DD932}</UniqueIdentifier>
     </Filter>
+    <Filter Include="FortniteGame\Private\AI">
+      <UniqueIdentifier>{9222524A-EB80-5BC5-9EC3-72C4A32A8395}</UniqueIdentifier>
+    </Filter>
     <Filter Include="FortniteGame\Private\Athena">
       <UniqueIdentifier>{284D5D92-86D3-5022-AFBE-248875ADE64A}</UniqueIdentifier>
     </Filter>
@@ -24,6 +27,9 @@
     </Filter>
     <Filter Include="FortniteGame\Public">
       <UniqueIdentifier>{94DCE417-8D41-5F86-BE0D-0DBE6C50508F}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="FortniteGame\Public\AI">
+      <UniqueIdentifier>{38B5AF6A-48BF-566E-97AB-6393B6829F04}</UniqueIdentifier>
     </Filter>
     <Filter Include="FortniteGame\Public\Athena">
       <UniqueIdentifier>{E515B583-470F-564E-BA6C-EF3A1F5379A8}</UniqueIdentifier>
@@ -127,6 +133,12 @@
     <Filter Include="Runtime\RemoteProcess\Private">
       <UniqueIdentifier>{3AB4F53D-7326-505E-BEE4-9750B3992F55}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Runtime\RemoteProcess\Private\Mac">
+      <UniqueIdentifier>{AD9CECD2-C3C7-5837-B38B-B9202A4FAC87}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Runtime\RemoteProcess\Private\Windows">
+      <UniqueIdentifier>{CD32F950-CA8B-57F6-ADF7-94FC65F00F5A}</UniqueIdentifier>
+    </Filter>
     <Filter Include="Runtime\RemoteProcess\Public">
       <UniqueIdentifier>{067A30C2-F5F7-5166-8537-70F78F619AC1}</UniqueIdentifier>
     </Filter>
@@ -141,6 +153,9 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\Source\FortniteGame\Public\AI\FortAthenaAI.h">
+      <Filter>FortniteGame\Public\AI</Filter>
+    </ClInclude>
     <ClInclude Include="..\Source\FortniteGame\Public\Athena\FortAthenaMatch.h">
       <Filter>FortniteGame\Public\Athena</Filter>
     </ClInclude>
@@ -188,6 +203,12 @@
     </ClInclude>
     <ClInclude Include="..\Source\Runtime\Core\Public\CoreTypes.h">
       <Filter>Runtime\Core\Public</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\Runtime\Core\Public\HAL\PlatformDetection.h">
+      <Filter>Runtime\Core\Public\HAL</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\Runtime\Core\Public\HAL\PlatformMisc.h">
+      <Filter>Runtime\Core\Public\HAL</Filter>
     </ClInclude>
     <ClInclude Include="..\Source\Runtime\Core\Public\HAL\WindowsPlatform.h">
       <Filter>Runtime\Core\Public\HAL</Filter>
@@ -281,6 +302,9 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\Source\FortniteGame\Private\AI\FortAthenaAI.cpp">
+      <Filter>FortniteGame\Private\AI</Filter>
+    </ClCompile>
     <ClCompile Include="..\Source\FortniteGame\Private\Athena\FortAthenaMatch.cpp">
       <Filter>FortniteGame\Private\Athena</Filter>
     </ClCompile>
@@ -311,7 +335,7 @@
     <ClCompile Include="..\Source\FortniteGame\Private\Player\FortTeamRoster.cpp">
       <Filter>FortniteGame\Private\Player</Filter>
     </ClCompile>
-    <ClCompile Include="..\Source\FortniteGame\Private\Versioning\Season3BuildProfile.cpp">
+    <ClCompile Include="..\Source\FortniteGame\Private\Versioning\Season13BuildProfile.cpp">
       <Filter>FortniteGame\Private\Versioning</Filter>
     </ClCompile>
     <ClCompile Include="..\Source\Launch\Private\LaunchServer.cpp">
@@ -320,7 +344,10 @@
     <ClCompile Include="..\Source\Runtime\Core\Private\Containers\StringConv.cpp">
       <Filter>Runtime\Core\Private\Containers</Filter>
     </ClCompile>
-    <ClCompile Include="..\Source\Runtime\Core\Private\HAL\WindowsPlatform.cpp">
+    <ClCompile Include="..\Source\Runtime\Core\Private\HAL\MacPlatformMisc.cpp">
+      <Filter>Runtime\Core\Private\HAL</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\Runtime\Core\Private\HAL\WindowsPlatformMisc.cpp">
       <Filter>Runtime\Core\Private\HAL</Filter>
     </ClCompile>
     <ClCompile Include="..\Source\Runtime\Core\Private\Logging\LogMacros.cpp">
@@ -359,10 +386,13 @@
     <ClCompile Include="..\Source\Runtime\RemoteProcess\Private\InstructionDecoder.cpp">
       <Filter>Runtime\RemoteProcess\Private</Filter>
     </ClCompile>
+    <ClCompile Include="..\Source\Runtime\RemoteProcess\Private\Mac\MacProcessAttachment.cpp">
+      <Filter>Runtime\RemoteProcess\Private\Mac</Filter>
+    </ClCompile>
     <ClCompile Include="..\Source\Runtime\RemoteProcess\Private\ModuleImage.cpp">
       <Filter>Runtime\RemoteProcess\Private</Filter>
     </ClCompile>
-    <ClCompile Include="..\Source\Runtime\RemoteProcess\Private\ProcessAttachment.cpp">
+    <ClCompile Include="..\Source\Runtime\RemoteProcess\Private\ProcessAttachmentShared.cpp">
       <Filter>Runtime\RemoteProcess\Private</Filter>
     </ClCompile>
     <ClCompile Include="..\Source\Runtime\RemoteProcess\Private\RemoteAllocation.cpp">
@@ -376,6 +406,9 @@
     </ClCompile>
     <ClCompile Include="..\Source\Runtime\RemoteProcess\Private\SignatureScanner.cpp">
       <Filter>Runtime\RemoteProcess\Private</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\Runtime\RemoteProcess\Private\Windows\WindowsProcessAttachment.cpp">
+      <Filter>Runtime\RemoteProcess\Private\Windows</Filter>
     </ClCompile>
     <ClCompile Include="..\Source\Runtime\RemoteProcess\Private\X64Emitter.cpp">
       <Filter>Runtime\RemoteProcess\Private</Filter>

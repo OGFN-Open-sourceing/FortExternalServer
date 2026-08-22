@@ -36,7 +36,9 @@ struct FEngineVersionInfo
 class FUnrealRuntime
 {
 public:
-    bool Initialize(FGameThreadBridge& InBridge, const FModuleImage& InImage);
+    bool Initialize(FGameThreadBridge& InBridge, const FModuleImage& InImage, const FObjectLayout& InLayout);
+
+    const FObjectLayout& GetLayout() const;
 
     bool IsInitialized() const;
 
@@ -107,8 +109,13 @@ private:
 
     FRemoteAddress GetObjectItemArray() const;
 
+    FRemoteAddress GetObjectItemAddress(int32 Index) const;
+
+    bool IsBooleanProperty(FRemoteAddress PropertyAddress) const;
+
     FGameThreadBridge* Bridge = nullptr;
     const FModuleImage* Image = nullptr;
+    FObjectLayout Layout;
     FUnrealGlobals Globals;
     FEngineVersionInfo VersionInfo;
 

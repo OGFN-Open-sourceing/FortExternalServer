@@ -8,7 +8,9 @@ struct FImageSection
     std::string Name;
     FRemoteAddress VirtualAddress = InvalidRemoteAddress;
     uint32 VirtualSize = 0;
-    uint32 Characteristics = 0;
+    bool bExecutable = false;
+    bool bReadable = false;
+    bool bWritable = false;
 
     bool IsExecutable() const;
 
@@ -43,8 +45,13 @@ public:
     const uint8* GetLocalPointer(FRemoteAddress Address) const;
 
 private:
+    bool ParsePortableExecutable();
+
+    bool ParseMachObject();
+
     FRemoteAddress BaseAddress = InvalidRemoteAddress;
     uint32 ImageSize = 0;
+    uint64 SlideOffset = 0;
     std::vector<uint8> Bytes;
     std::vector<FImageSection> Sections;
 };

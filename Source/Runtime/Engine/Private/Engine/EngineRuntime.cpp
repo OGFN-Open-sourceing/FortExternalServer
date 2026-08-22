@@ -136,6 +136,8 @@ bool FEngineRuntime::ResolveFunctions()
     Functions.AbilitySystemInternalTryActivateAbility = Scanner.FindPattern(FEngineSignatures::AbilitySystemInternalTryActivateAbility);
     Functions.AbilitySystemMarkAbilitySpecDirty = Scanner.FindPattern(FEngineSignatures::AbilitySystemMarkAbilitySpecDirty);
 
+    ResolveAnchoredFallbacks(Scanner);
+
     const FRemoteAddress CollectGarbageCall = Scanner.FindPattern(FEngineSignatures::CollectGarbageCall);
     if (CollectGarbageCall != InvalidRemoteAddress)
     {
@@ -144,6 +146,28 @@ bool FEngineRuntime::ResolveFunctions()
     }
 
     return true;
+}
+
+void FEngineRuntime::ResolveAnchoredFallbacks(const FSignatureScanner& Scanner)
+{
+    const auto ResolveFromAnchor = [&Scanner](FRemoteAddress& Target, std::wstring_view Anchor) {
+        if (Target != InvalidRemoteAddress)
+        {
+            return;
+        }
+
+        const FRemoteAddress AnchorAddress = Scanner.FindWideStringReference(Anchor);
+        if (AnchorAddress == InvalidRemoteAddress)
+        {
+            return;
+        }
+
+        Target = Scanner.FindFunctionStart(AnchorAddress, FEngineSignatures::AnchorBacktrack);
+    };
+
+    ResolveFromAnchor(Functions.WorldWelcomePlayer, FEngineSignatures::WelcomePlayerAnchor);
+    ResolveFromAnchor(Functions.WorldSpawnPlayActor, FEngineSignatures::SpawnPlayActorAnchor);
+    ResolveFromAnchor(Functions.OnlineSessionKickPlayer, FEngineSignatures::KickPlayerAnchor);
 }
 
 FObjectHandle FEngineRuntime::GetEngine() const

@@ -3,38 +3,167 @@
 #include <algorithm>
 #include <cstring>
 
+namespace MachObject
+{
+    constexpr uint32 Magic64 = 0xFEEDFACFu;
+    constexpr uint32 LoadCommandSegment64 = 0x19u;
+
+    constexpr uint32 SectionAttributePureInstructions = 0x80000000u;
+    constexpr uint32 SectionAttributeSomeInstructions = 0x00000400u;
+
+    constexpr uint32 ProtectionRead = 0x1u;
+    constexpr uint32 ProtectionWrite = 0x2u;
+    constexpr uint32 ProtectionExecute = 0x4u;
+
+    struct FHeader64
+    {
+        uint32 Magic;
+        int32 CpuType;
+        int32 CpuSubType;
+        uint32 FileType;
+        uint32 CommandCount;
+        uint32 SizeOfCommands;
+        uint32 Flags;
+        uint32 Reserved;
+    };
+
+    struct FLoadCommand
+    {
+        uint32 Command;
+        uint32 CommandSize;
+    };
+
+    struct FSegmentCommand64
+    {
+        uint32 Command;
+        uint32 CommandSize;
+        char SegmentName[16];
+        uint64 VirtualAddress;
+        uint64 VirtualSize;
+        uint64 FileOffset;
+        uint64 FileSize;
+        uint32 MaximumProtection;
+        uint32 InitialProtection;
+        uint32 SectionCount;
+        uint32 Flags;
+    };
+
+    struct FSection64
+    {
+        char SectionName[16];
+        char SegmentName[16];
+        uint64 Address;
+        uint64 Size;
+        uint32 Offset;
+        uint32 Alignment;
+        uint32 RelocationOffset;
+        uint32 RelocationCount;
+        uint32 Flags;
+        uint32 Reserved1;
+        uint32 Reserved2;
+        uint32 Reserved3;
+    };
+
+    std::string ReadFixedName(const char* Name, size_t Capacity)
+    {
+        return std::string(Name, ::strnlen(Name, Capacity));
+    }
+}
+
 bool FImageSection::IsExecutable() const
 {
-    return (Characteristics & IMAGE_SCN_MEM_EXECUTE) != 0;
+    return bExecutable;
 }
 
 bool FImageSection::IsReadOnlyData() const
 {
-    return (Characteristics & IMAGE_SCN_MEM_READ) != 0 && (Characteristics & IMAGE_SCN_MEM_EXECUTE) == 0;
+    return bReadable && !bExecutable;
 }
 
-bool FModuleImage::Load(const FRemoteMemory& Memory, const FRemoteModuleInfo& ModuleInfo)
+bool FModuleImage::ParseMachObject()
 {
-    BaseAddress = ModuleInfo.BaseAddress;
-    ImageSize = ModuleInfo.ImageSize;
-    Bytes.clear();
-    Sections.clear();
-
-    if (BaseAddress == InvalidRemoteAddress || ImageSize == 0)
+    if (Bytes.size() < sizeof(MachObject::FHeader64))
     {
         return false;
     }
 
-    Bytes.resize(ImageSize);
+    MachObject::FHeader64 Header = {};
+    std::memcpy(&Header, Bytes.data(), sizeof(Header));
 
-    constexpr size_t ChunkSize = 0x100000;
-    for (size_t Offset = 0; Offset < ImageSize; Offset += ChunkSize)
+    if (Header.Magic != MachObject::Magic64)
     {
-        const size_t Remaining = std::min<size_t>(ChunkSize, ImageSize - Offset);
-        if (!Memory.ReadRaw(BaseAddress + Offset, Bytes.data() + Offset, Remaining))
+        return false;
+    }
+
+    size_t CommandOffset = sizeof(MachObject::FHeader64);
+
+    for (uint32 CommandIndex = 0; CommandIndex < Header.CommandCount; ++CommandIndex)
+    {
+        if (CommandOffset + sizeof(MachObject::FLoadCommand) > Bytes.size())
         {
-            std::memset(Bytes.data() + Offset, 0, Remaining);
+            break;
         }
+
+        MachObject::FLoadCommand Command = {};
+        std::memcpy(&Command, Bytes.data() + CommandOffset, sizeof(Command));
+
+        if (Command.CommandSize == 0 || CommandOffset + Command.CommandSize > Bytes.size())
+        {
+            break;
+        }
+
+        if (Command.Command == MachObject::LoadCommandSegment64)
+        {
+            MachObject::FSegmentCommand64 Segment = {};
+            std::memcpy(&Segment, Bytes.data() + CommandOffset, sizeof(Segment));
+
+            size_t SectionOffset = CommandOffset + sizeof(MachObject::FSegmentCommand64);
+
+            for (uint32 SectionIndex = 0; SectionIndex < Segment.SectionCount; ++SectionIndex)
+            {
+                if (SectionOffset + sizeof(MachObject::FSection64) > Bytes.size())
+                {
+                    break;
+                }
+
+                MachObject::FSection64 SectionHeader = {};
+                std::memcpy(&SectionHeader, Bytes.data() + SectionOffset, sizeof(SectionHeader));
+
+                FImageSection Section;
+                Section.Name = MachObject::ReadFixedName(SectionHeader.SegmentName, sizeof(SectionHeader.SegmentName)) + "," +
+                    MachObject::ReadFixedName(SectionHeader.SectionName, sizeof(SectionHeader.SectionName));
+                Section.VirtualAddress = SectionHeader.Address + SlideOffset;
+                Section.VirtualSize = static_cast<uint32>(SectionHeader.Size);
+
+                const bool bInstructionSection =
+                    (SectionHeader.Flags & (MachObject::SectionAttributePureInstructions | MachObject::SectionAttributeSomeInstructions)) != 0;
+
+                Section.bExecutable = bInstructionSection || (Segment.InitialProtection & MachObject::ProtectionExecute) != 0;
+                Section.bReadable = (Segment.InitialProtection & MachObject::ProtectionRead) != 0;
+                Section.bWritable = (Segment.InitialProtection & MachObject::ProtectionWrite) != 0;
+
+                if (Section.VirtualSize > 0)
+                {
+                    Sections.push_back(std::move(Section));
+                }
+
+                SectionOffset += sizeof(MachObject::FSection64);
+            }
+        }
+
+        CommandOffset += Command.CommandSize;
+    }
+
+    return !Sections.empty();
+}
+
+#if FORT_PLATFORM_WINDOWS
+
+bool FModuleImage::ParsePortableExecutable()
+{
+    if (Bytes.size() < sizeof(IMAGE_DOS_HEADER))
+    {
+        return false;
     }
 
     const auto* DosHeader = reinterpret_cast<const IMAGE_DOS_HEADER*>(Bytes.data());
@@ -62,15 +191,59 @@ bool FModuleImage::Load(const FRemoteMemory& Memory, const FRemoteModuleInfo& Mo
         const IMAGE_SECTION_HEADER& Header = SectionHeader[Index];
 
         FImageSection Section;
-        Section.Name.assign(reinterpret_cast<const char*>(Header.Name), strnlen(reinterpret_cast<const char*>(Header.Name), IMAGE_SIZEOF_SHORT_NAME));
+        Section.Name.assign(reinterpret_cast<const char*>(Header.Name), ::strnlen(reinterpret_cast<const char*>(Header.Name), IMAGE_SIZEOF_SHORT_NAME));
         Section.VirtualAddress = BaseAddress + Header.VirtualAddress;
         Section.VirtualSize = Header.Misc.VirtualSize != 0 ? Header.Misc.VirtualSize : Header.SizeOfRawData;
-        Section.Characteristics = Header.Characteristics;
+        Section.bExecutable = (Header.Characteristics & IMAGE_SCN_MEM_EXECUTE) != 0;
+        Section.bReadable = (Header.Characteristics & IMAGE_SCN_MEM_READ) != 0;
+        Section.bWritable = (Header.Characteristics & IMAGE_SCN_MEM_WRITE) != 0;
 
         Sections.push_back(std::move(Section));
     }
 
     return !Sections.empty();
+}
+
+#else
+
+bool FModuleImage::ParsePortableExecutable()
+{
+    return false;
+}
+
+#endif
+
+bool FModuleImage::Load(const FRemoteMemory& Memory, const FRemoteModuleInfo& ModuleInfo)
+{
+    BaseAddress = ModuleInfo.BaseAddress;
+    ImageSize = static_cast<uint32>(ModuleInfo.ImageSize);
+    SlideOffset = ModuleInfo.SlideOffset;
+    Bytes.clear();
+    Sections.clear();
+
+    if (BaseAddress == InvalidRemoteAddress || ImageSize == 0)
+    {
+        return false;
+    }
+
+    Bytes.resize(ImageSize);
+
+    constexpr size_t ChunkSize = 0x100000;
+    for (size_t Offset = 0; Offset < ImageSize; Offset += ChunkSize)
+    {
+        const size_t Remaining = std::min<size_t>(ChunkSize, ImageSize - Offset);
+        if (!Memory.ReadRaw(BaseAddress + Offset, Bytes.data() + Offset, Remaining))
+        {
+            std::memset(Bytes.data() + Offset, 0, Remaining);
+        }
+    }
+
+    if (ParsePortableExecutable())
+    {
+        return true;
+    }
+
+    return ParseMachObject();
 }
 
 bool FModuleImage::IsLoaded() const

@@ -6,20 +6,14 @@
 namespace
 {
     constexpr int32 StubFrameSize = 0x88;
-    constexpr int32 StubSavedRcx = 0x20;
-    constexpr int32 StubSavedRdx = 0x28;
-    constexpr int32 StubSavedR8 = 0x30;
-    constexpr int32 StubSavedR9 = 0x38;
+    constexpr int32 StubSavedIntegerArgument0 = 0x20;
     constexpr int32 StubSavedXmm0 = 0x40;
     constexpr int32 StubSavedXmm1 = 0x50;
     constexpr int32 StubSavedXmm2 = 0x60;
     constexpr int32 StubSavedXmm3 = 0x70;
 
     constexpr int32 PumpFrameSize = 0x48;
-    constexpr int32 PumpStackArgument0 = 0x20;
 
-    constexpr EX64Register IntegerArgumentRegisters[FBridgeLayout::IntegerArgumentCount] = { EX64Register::Rcx, EX64Register::Rdx, EX64Register::R8,
-        EX64Register::R9 };
 }
 
 float FHookInvocation::GetFloatArgument(int32 Index) const
@@ -49,6 +43,7 @@ bool FGameThreadBridge::Initialize(const FRemoteMemory& InMemory, FRemoteAllocat
 
     Memory = &InMemory;
     Arena = &InArena;
+    Abi = FX64AbiLayout::GetHostAbi();
 
     ControlBlockAddress = Arena->AllocateZeroed(FBridgeLayout::ControlBlockSize, 64);
     ChannelArrayAddress = Arena->AllocateZeroed(static_cast<size_t>(FBridgeLayout::ChannelSize) * FBridgeLayout::MaximumChannels, 64);
@@ -111,17 +106,17 @@ void FGameThreadBridge::EmitCommandDispatch(FX64Emitter& Emitter, size_t LoopLab
     Emitter.MoveRegisterImmediate(EX64Register::Rax, ControlBlockAddress);
     Emitter.LoadRegisterFromMemory(EX64Register::R10, EX64Register::Rax, FBridgeLayout::CommandTarget);
 
-    for (int32 Index = 0; Index < FBridgeLayout::IntegerArgumentCount; ++Index)
+    for (int32 Index = 0; Index < Abi.IntegerArgumentCount; ++Index)
     {
         const int32 Displacement = FBridgeLayout::CommandArgument0 + Index * 8;
         Emitter.LoadXmmQwordFromMemory(static_cast<uint8>(Index), EX64Register::Rax, Displacement);
-        Emitter.LoadRegisterFromMemory(IntegerArgumentRegisters[Index], EX64Register::Rax, Displacement);
+        Emitter.LoadRegisterFromMemory(Abi.IntegerArgumentRegisters[Index], EX64Register::Rax, Displacement);
     }
 
-    for (int32 Index = FBridgeLayout::IntegerArgumentCount; Index < FBridgeLayout::MaximumCommandArguments; ++Index)
+    for (int32 Index = Abi.IntegerArgumentCount; Index < FBridgeLayout::MaximumCommandArguments; ++Index)
     {
         Emitter.LoadRegisterFromMemory(EX64Register::R11, EX64Register::Rax, FBridgeLayout::CommandArgument0 + Index * 8);
-        Emitter.StoreRegisterToMemory(EX64Register::Rsp, PumpStackArgument0 + (Index - FBridgeLayout::IntegerArgumentCount) * 8, EX64Register::R11);
+        Emitter.StoreRegisterToMemory(EX64Register::Rsp, Abi.ShadowSpaceBytes + (Index - Abi.IntegerArgumentCount) * 8, EX64Register::R11);
     }
 
     Emitter.CallRegister(EX64Register::R10);
@@ -187,20 +182,22 @@ bool FGameThreadBridge::EmitHookStub(int32 ChannelIndex, EHookDispatchMode Mode,
 
     Emitter.SubRegisterImmediate(EX64Register::Rsp, StubFrameSize);
 
-    Emitter.StoreRegisterToMemory(EX64Register::Rsp, StubSavedRcx, EX64Register::Rcx);
-    Emitter.StoreRegisterToMemory(EX64Register::Rsp, StubSavedRdx, EX64Register::Rdx);
-    Emitter.StoreRegisterToMemory(EX64Register::Rsp, StubSavedR8, EX64Register::R8);
-    Emitter.StoreRegisterToMemory(EX64Register::Rsp, StubSavedR9, EX64Register::R9);
+    for (int32 Index = 0; Index < FBridgeLayout::IntegerArgumentCount; ++Index)
+    {
+        Emitter.StoreRegisterToMemory(EX64Register::Rsp, StubSavedIntegerArgument0 + Index * 8, Abi.IntegerArgumentRegisters[Index]);
+    }
+
     Emitter.SaveXmmToMemory(0, EX64Register::Rsp, StubSavedXmm0);
     Emitter.SaveXmmToMemory(1, EX64Register::Rsp, StubSavedXmm1);
     Emitter.SaveXmmToMemory(2, EX64Register::Rsp, StubSavedXmm2);
     Emitter.SaveXmmToMemory(3, EX64Register::Rsp, StubSavedXmm3);
 
     Emitter.MoveRegisterImmediate(EX64Register::Rax, ChannelAddress);
-    Emitter.StoreRegisterToMemory(EX64Register::Rax, FBridgeLayout::ChannelIntegerArgument0 + 0, EX64Register::Rcx);
-    Emitter.StoreRegisterToMemory(EX64Register::Rax, FBridgeLayout::ChannelIntegerArgument0 + 8, EX64Register::Rdx);
-    Emitter.StoreRegisterToMemory(EX64Register::Rax, FBridgeLayout::ChannelIntegerArgument0 + 16, EX64Register::R8);
-    Emitter.StoreRegisterToMemory(EX64Register::Rax, FBridgeLayout::ChannelIntegerArgument0 + 24, EX64Register::R9);
+
+    for (int32 Index = 0; Index < FBridgeLayout::IntegerArgumentCount; ++Index)
+    {
+        Emitter.StoreRegisterToMemory(EX64Register::Rax, FBridgeLayout::ChannelIntegerArgument0 + Index * 8, Abi.IntegerArgumentRegisters[Index]);
+    }
     Emitter.StoreXmmQwordToMemory(EX64Register::Rax, FBridgeLayout::ChannelFloatArgument1, 1);
     Emitter.StoreXmmQwordToMemory(EX64Register::Rax, FBridgeLayout::ChannelFloatArgument2, 2);
 
@@ -226,10 +223,12 @@ bool FGameThreadBridge::EmitHookStub(int32 ChannelIndex, EHookDispatchMode Mode,
     }
 
     Emitter.MoveRegisterImmediate(EX64Register::Rax, ChannelAddress);
-    Emitter.LoadRegisterFromMemory(EX64Register::Rcx, EX64Register::Rax, FBridgeLayout::ChannelIntegerArgument0 + 0);
-    Emitter.LoadRegisterFromMemory(EX64Register::Rdx, EX64Register::Rax, FBridgeLayout::ChannelIntegerArgument0 + 8);
-    Emitter.LoadRegisterFromMemory(EX64Register::R8, EX64Register::Rax, FBridgeLayout::ChannelIntegerArgument0 + 16);
-    Emitter.LoadRegisterFromMemory(EX64Register::R9, EX64Register::Rax, FBridgeLayout::ChannelIntegerArgument0 + 24);
+
+    for (int32 Index = 0; Index < FBridgeLayout::IntegerArgumentCount; ++Index)
+    {
+        Emitter.LoadRegisterFromMemory(Abi.IntegerArgumentRegisters[Index], EX64Register::Rax, FBridgeLayout::ChannelIntegerArgument0 + Index * 8);
+    }
+
     Emitter.LoadXmmFromMemory(0, EX64Register::Rsp, StubSavedXmm0);
     Emitter.LoadXmmFromMemory(1, EX64Register::Rsp, StubSavedXmm1);
     Emitter.LoadXmmFromMemory(2, EX64Register::Rsp, StubSavedXmm2);
@@ -240,9 +239,9 @@ bool FGameThreadBridge::EmitHookStub(int32 ChannelIndex, EHookDispatchMode Mode,
     if (Mode == EHookDispatchMode::Blocking)
     {
         Emitter.BindLabel(LabelOverride);
-        Emitter.MoveRegisterImmediate(EX64Register::Rcx, ChannelAddress);
-        Emitter.LoadXmmQwordFromMemory(0, EX64Register::Rcx, FBridgeLayout::ChannelReturnValue);
-        Emitter.LoadRegisterFromMemory(EX64Register::Rax, EX64Register::Rcx, FBridgeLayout::ChannelReturnValue);
+        Emitter.MoveRegisterImmediate(EX64Register::R10, ChannelAddress);
+        Emitter.LoadXmmQwordFromMemory(0, EX64Register::R10, FBridgeLayout::ChannelReturnValue);
+        Emitter.LoadRegisterFromMemory(EX64Register::Rax, EX64Register::R10, FBridgeLayout::ChannelReturnValue);
         Emitter.AddRegisterImmediate(EX64Register::Rsp, StubFrameSize);
         Emitter.EmitReturn();
     }
@@ -425,9 +424,9 @@ uint64 FGameThreadBridge::GetPumpSequence() const
 bool FGameThreadBridge::WaitForGameThreadPump(uint64 TimeoutMilliseconds)
 {
     const uint64 StartSequence = GetPumpSequence();
-    const uint64 Deadline = FWindowsPlatform::GetTimeMilliseconds() + TimeoutMilliseconds;
+    const uint64 Deadline = FPlatformMisc::GetTimeMilliseconds() + TimeoutMilliseconds;
 
-    while (FWindowsPlatform::GetTimeMilliseconds() < Deadline)
+    while (FPlatformMisc::GetTimeMilliseconds() < Deadline)
     {
         ServicePendingHooks();
 
@@ -436,7 +435,7 @@ bool FGameThreadBridge::WaitForGameThreadPump(uint64 TimeoutMilliseconds)
             return true;
         }
 
-        FWindowsPlatform::SleepMilliseconds(1);
+        FPlatformMisc::SleepMilliseconds(1);
     }
 
     return false;
@@ -567,9 +566,9 @@ uint64 FGameThreadBridge::CallFunction(FRemoteAddress Function, const std::vecto
     Memory->Write<uint64>(ControlBlockAddress + FBridgeLayout::CommandTarget, Function);
     Memory->Write<uint64>(ControlBlockAddress + FBridgeLayout::CommandDoorbell, 1);
 
-    const uint64 Deadline = FWindowsPlatform::GetTimeMilliseconds() + TimeoutMilliseconds;
+    const uint64 Deadline = FPlatformMisc::GetTimeMilliseconds() + TimeoutMilliseconds;
 
-    while (FWindowsPlatform::GetTimeMilliseconds() < Deadline)
+    while (FPlatformMisc::GetTimeMilliseconds() < Deadline)
     {
         if (Memory->Read<uint64>(ControlBlockAddress + FBridgeLayout::CommandCompletion) != StartCompletion)
         {
@@ -577,7 +576,7 @@ uint64 FGameThreadBridge::CallFunction(FRemoteAddress Function, const std::vecto
         }
 
         ServicePendingHooks();
-        FWindowsPlatform::YieldThread();
+        FPlatformMisc::YieldThread();
     }
 
     Memory->Write<uint64>(ControlBlockAddress + FBridgeLayout::CommandDoorbell, 0);

@@ -68,6 +68,8 @@ public:
 private:
     bool ResolveFunctions();
 
+    void ResolveAnchoredFallbacks(const class FSignatureScanner& Scanner);
+
     FUnrealRuntime* UnrealRuntime = nullptr;
     FEngineFunctions Functions;
     mutable FRemoteAddress CachedEngineAddress = InvalidRemoteAddress;

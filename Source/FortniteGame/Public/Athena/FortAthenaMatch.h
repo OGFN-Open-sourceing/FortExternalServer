@@ -1,5 +1,6 @@
 #pragma once
 
+#include "FortniteGame/Public/AI/FortAthenaAI.h"
 #include "FortniteGame/Public/Athena/FortGameModeAthena.h"
 #include "FortniteGame/Public/Gameplay/FortAircraft.h"
 #include "FortniteGame/Public/Gameplay/FortSafeZone.h"
@@ -28,6 +29,9 @@ struct FAthenaMatchSettings
     bool bAllowSpectateAfterDeath = true;
     bool bFriendlyFireEnabled = false;
     bool bUseGameSessions = false;
+    bool bPlayerBotsEnabled = false;
+    int32 PlayerBotCount = 0;
+    bool bBossesEnabled = false;
 
     FPlayerBootstrapSettings PlayerSettings;
 };
@@ -61,6 +65,10 @@ public:
     int32 GetConnectedPlayerCount() const;
 
     int32 GetAlivePlayerCount() const;
+
+    int32 GetAliveBotCount() const;
+
+    const FFortAIDirector& GetAIDirector() const;
 
     const FAthenaMatchSettings& GetSettings() const;
 
@@ -113,6 +121,7 @@ private:
     FFortTeamRoster TeamRoster;
     FFortSafeZoneDirector SafeZoneDirector;
     FFortAircraftDirector AircraftDirector;
+    FFortAIDirector AIDirector;
 
     std::map<FRemoteAddress, FTrackedPlayer> TrackedPlayers;
 

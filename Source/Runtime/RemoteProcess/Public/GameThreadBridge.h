@@ -5,9 +5,9 @@
 #include "Runtime/RemoteProcess/Public/RemoteDetour.h"
 #include "Runtime/RemoteProcess/Public/RemoteMemory.h"
 
-#include <functional>
+#include "Runtime/RemoteProcess/Public/X64Emitter.h"
 
-class FX64Emitter;
+#include <functional>
 
 namespace FBridgeLayout
 {
@@ -125,6 +125,7 @@ private:
     FRemoteAddress ChannelArrayAddress = InvalidRemoteAddress;
     FRemoteAddress PumpRoutineAddress = InvalidRemoteAddress;
     std::vector<FHookRegistration> Hooks;
+    FX64AbiLayout Abi;
     std::vector<FRemoteDetour> ConstantHooks;
     uint64 HoldDepth = 0;
     bool bServicingHooks = false;

@@ -17,6 +17,45 @@ namespace
     }
 }
 
+FX64AbiLayout FX64AbiLayout::GetMicrosoftX64()
+{
+    FX64AbiLayout Layout;
+    Layout.Convention = EX64CallingConvention::MicrosoftX64;
+    Layout.IntegerArgumentRegisters[0] = EX64Register::Rcx;
+    Layout.IntegerArgumentRegisters[1] = EX64Register::Rdx;
+    Layout.IntegerArgumentRegisters[2] = EX64Register::R8;
+    Layout.IntegerArgumentRegisters[3] = EX64Register::R9;
+    Layout.IntegerArgumentRegisters[4] = EX64Register::Rax;
+    Layout.IntegerArgumentRegisters[5] = EX64Register::Rax;
+    Layout.IntegerArgumentCount = 4;
+    Layout.ShadowSpaceBytes = 32;
+    return Layout;
+}
+
+FX64AbiLayout FX64AbiLayout::GetSystemV()
+{
+    FX64AbiLayout Layout;
+    Layout.Convention = EX64CallingConvention::SystemV;
+    Layout.IntegerArgumentRegisters[0] = EX64Register::Rdi;
+    Layout.IntegerArgumentRegisters[1] = EX64Register::Rsi;
+    Layout.IntegerArgumentRegisters[2] = EX64Register::Rdx;
+    Layout.IntegerArgumentRegisters[3] = EX64Register::Rcx;
+    Layout.IntegerArgumentRegisters[4] = EX64Register::R8;
+    Layout.IntegerArgumentRegisters[5] = EX64Register::R9;
+    Layout.IntegerArgumentCount = 6;
+    Layout.ShadowSpaceBytes = 0;
+    return Layout;
+}
+
+FX64AbiLayout FX64AbiLayout::GetHostAbi()
+{
+#if FORT_PLATFORM_WINDOWS
+    return GetMicrosoftX64();
+#else
+    return GetSystemV();
+#endif
+}
+
 void FX64Emitter::Reset()
 {
     Bytes.clear();

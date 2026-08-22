@@ -66,6 +66,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="..\Source\FortniteGame\Public\AI\FortAthenaAI.h" />
     <ClInclude Include="..\Source\FortniteGame\Public\Athena\FortAthenaMatch.h" />
     <ClInclude Include="..\Source\FortniteGame\Public\Athena\FortGameModeAthena.h" />
     <ClInclude Include="..\Source\FortniteGame\Public\Athena\FortGameStateAthena.h" />
@@ -82,6 +83,8 @@
     <ClInclude Include="..\Source\Runtime\Core\Public\Containers\StringConv.h" />
     <ClInclude Include="..\Source\Runtime\Core\Public\CoreMinimal.h" />
     <ClInclude Include="..\Source\Runtime\Core\Public\CoreTypes.h" />
+    <ClInclude Include="..\Source\Runtime\Core\Public\HAL\PlatformDetection.h" />
+    <ClInclude Include="..\Source\Runtime\Core\Public\HAL\PlatformMisc.h" />
     <ClInclude Include="..\Source\Runtime\Core\Public\HAL\WindowsPlatform.h" />
     <ClInclude Include="..\Source\Runtime\Core\Public\Logging\LogMacros.h" />
     <ClInclude Include="..\Source\Runtime\Core\Public\Math\RandomStream.h" />
@@ -114,6 +117,7 @@
     <ClInclude Include="..\Source\Server\Public\ServerSettings.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\Source\FortniteGame\Private\AI\FortAthenaAI.cpp" />
     <ClCompile Include="..\Source\FortniteGame\Private\Athena\FortAthenaMatch.cpp" />
     <ClCompile Include="..\Source\FortniteGame\Private\Athena\FortGameModeAthena.cpp" />
     <ClCompile Include="..\Source\FortniteGame\Private\Athena\FortGameStateAthena.cpp" />
@@ -124,10 +128,11 @@
     <ClCompile Include="..\Source\FortniteGame\Private\Player\FortPlayerBootstrap.cpp" />
     <ClCompile Include="..\Source\FortniteGame\Private\Player\FortPlayerControllerAthena.cpp" />
     <ClCompile Include="..\Source\FortniteGame\Private\Player\FortTeamRoster.cpp" />
-    <ClCompile Include="..\Source\FortniteGame\Private\Versioning\Season3BuildProfile.cpp" />
+    <ClCompile Include="..\Source\FortniteGame\Private\Versioning\Season13BuildProfile.cpp" />
     <ClCompile Include="..\Source\Launch\Private\LaunchServer.cpp" />
     <ClCompile Include="..\Source\Runtime\Core\Private\Containers\StringConv.cpp" />
-    <ClCompile Include="..\Source\Runtime\Core\Private\HAL\WindowsPlatform.cpp" />
+    <ClCompile Include="..\Source\Runtime\Core\Private\HAL\MacPlatformMisc.cpp" />
+    <ClCompile Include="..\Source\Runtime\Core\Private\HAL\WindowsPlatformMisc.cpp" />
     <ClCompile Include="..\Source\Runtime\Core\Private\Logging\LogMacros.cpp" />
     <ClCompile Include="..\Source\Runtime\Core\Private\Math\RandomStream.cpp" />
     <ClCompile Include="..\Source\Runtime\Core\Private\Math\Rotator.cpp" />
@@ -140,12 +145,14 @@
     <ClCompile Include="..\Source\Runtime\Engine\Private\Engine\World.cpp" />
     <ClCompile Include="..\Source\Runtime\RemoteProcess\Private\GameThreadBridge.cpp" />
     <ClCompile Include="..\Source\Runtime\RemoteProcess\Private\InstructionDecoder.cpp" />
+    <ClCompile Include="..\Source\Runtime\RemoteProcess\Private\Mac\MacProcessAttachment.cpp" />
     <ClCompile Include="..\Source\Runtime\RemoteProcess\Private\ModuleImage.cpp" />
-    <ClCompile Include="..\Source\Runtime\RemoteProcess\Private\ProcessAttachment.cpp" />
+    <ClCompile Include="..\Source\Runtime\RemoteProcess\Private\ProcessAttachmentShared.cpp" />
     <ClCompile Include="..\Source\Runtime\RemoteProcess\Private\RemoteAllocation.cpp" />
     <ClCompile Include="..\Source\Runtime\RemoteProcess\Private\RemoteDetour.cpp" />
     <ClCompile Include="..\Source\Runtime\RemoteProcess\Private\RemoteMemory.cpp" />
     <ClCompile Include="..\Source\Runtime\RemoteProcess\Private\SignatureScanner.cpp" />
+    <ClCompile Include="..\Source\Runtime\RemoteProcess\Private\Windows\WindowsProcessAttachment.cpp" />
     <ClCompile Include="..\Source\Runtime\RemoteProcess\Private\X64Emitter.cpp" />
     <ClCompile Include="..\Source\Server\Private\GameServerHost.cpp" />
     <ClCompile Include="..\Source\Server\Private\ServerSettings.cpp" />

@@ -11,6 +11,9 @@ struct FConfiguration
     static inline auto TeamSize = 1;
     static inline auto MinimumPlayers = 2;
     static inline auto WarmupTime = 120;
+    static inline auto bPlayerBots = false;
+    static inline auto PlayerBotCount = 0;
+    static inline auto bBosses = false;
     static inline auto bSessions = false;
     static inline auto bJoinInProgress = false;
     static inline auto bFriendlyFire = false;

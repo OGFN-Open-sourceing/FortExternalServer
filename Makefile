@@ -7,7 +7,7 @@ OBJECT_DIR := Intermediate/Build
 
 TARGET := $(BINARY_DIR)/FortExternalServer.exe
 
-SOURCES := $(shell find $(SOURCE_DIR) -name '*.cpp')
+SOURCES := $(shell find $(SOURCE_DIR) -name '*.cpp' -not -path '*/Private/Mac/*')
 OBJECTS := $(patsubst $(SOURCE_DIR)/%.cpp,$(OBJECT_DIR)/%.o,$(SOURCES))
 DEPENDS := $(OBJECTS:.o=.d)
 

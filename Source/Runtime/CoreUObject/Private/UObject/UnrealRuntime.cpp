@@ -7,6 +7,7 @@
 namespace
 {
     constexpr size_t ScratchArenaBytes = 0x20000;
+    constexpr int32 FieldClassOffset = 0x08;
 
     uint64 MakeCacheKey(FRemoteAddress OwnerAddress, std::string_view Name)
     {
@@ -33,10 +34,11 @@ bool FUnrealGlobals::IsComplete() const
         NameToString != InvalidRemoteAddress && ProcessEvent != InvalidRemoteAddress && MemoryRealloc != InvalidRemoteAddress;
 }
 
-bool FUnrealRuntime::Initialize(FGameThreadBridge& InBridge, const FModuleImage& InImage)
+bool FUnrealRuntime::Initialize(FGameThreadBridge& InBridge, const FModuleImage& InImage, const FObjectLayout& InLayout)
 {
     Bridge = &InBridge;
     Image = &InImage;
+    Layout = InLayout;
 
     ScratchArena = Bridge->GetArena().AllocateZeroed(ScratchArenaBytes, 16);
     ScratchArenaSize = ScratchArena != InvalidRemoteAddress ? ScratchArenaBytes : 0;
@@ -59,16 +61,16 @@ bool FUnrealRuntime::Initialize(FGameThreadBridge& InBridge, const FModuleImage&
 
 bool FUnrealRuntime::WaitForObjectArray(int32 MinimumObjectCount, uint64 TimeoutMilliseconds) const
 {
-    const uint64 Deadline = FWindowsPlatform::GetTimeMilliseconds() + TimeoutMilliseconds;
+    const uint64 Deadline = FPlatformMisc::GetTimeMilliseconds() + TimeoutMilliseconds;
 
-    while (FWindowsPlatform::GetTimeMilliseconds() < Deadline)
+    while (FPlatformMisc::GetTimeMilliseconds() < Deadline)
     {
         if (GetObjectCount() >= MinimumObjectCount)
         {
             return true;
         }
 
-        FWindowsPlatform::SleepMilliseconds(250);
+        FPlatformMisc::SleepMilliseconds(250);
     }
 
     return false;
@@ -77,6 +79,11 @@ bool FUnrealRuntime::WaitForObjectArray(int32 MinimumObjectCount, uint64 Timeout
 bool FUnrealRuntime::IsInitialized() const
 {
     return Bridge != nullptr && Image != nullptr && Globals.IsComplete();
+}
+
+const FObjectLayout& FUnrealRuntime::GetLayout() const
+{
+    return Layout;
 }
 
 const FUnrealGlobals& FUnrealRuntime::GetGlobals() const
@@ -120,6 +127,15 @@ bool FUnrealRuntime::ResolveGlobals()
     }
 
     Globals.StaticFindObject = Scanner.FindFirstAvailable({ FCoreUObjectSignatures::StaticFindObject, FCoreUObjectSignatures::StaticFindObjectAlternate });
+
+    if (Globals.StaticFindObject == InvalidRemoteAddress)
+    {
+        const FRemoteAddress FindObjectAnchor = Scanner.FindWideStringReference(FCoreUObjectSignatures::StaticFindObjectAnchor);
+        if (FindObjectAnchor != InvalidRemoteAddress)
+        {
+            Globals.StaticFindObject = Scanner.FindFunctionStart(FindObjectAnchor, FCoreUObjectSignatures::FunctionStartBacktrack);
+        }
+    }
     Globals.MemoryRealloc = Scanner.FindPattern(FCoreUObjectSignatures::MemoryRealloc);
     Globals.NameToString = Scanner.FindPattern(FCoreUObjectSignatures::NameToString);
 
@@ -222,7 +238,7 @@ bool FUnrealRuntime::ResolveProcessEvent(const FSignatureScanner& Scanner)
         return false;
     }
 
-    const FRemoteAddress VirtualTable = GetMemory().ReadPointer(ProbeObject + FUnrealLayout::UObject_VirtualTable);
+    const FRemoteAddress VirtualTable = GetMemory().ReadPointer(ProbeObject + Layout.UObject_VirtualTable);
     if (VirtualTable == InvalidRemoteAddress)
     {
         return false;
@@ -308,7 +324,32 @@ FRemoteAddress FUnrealRuntime::GetObjectItemArray() const
 
 int32 FUnrealRuntime::GetObjectCount() const
 {
-    return GetMemory().Read<int32>(Globals.ObjectArray + FUnrealLayout::TUObjectArray_NumElements);
+    return GetMemory().Read<int32>(Globals.ObjectArray + Layout.GetObjectCountOffset());
+}
+
+FRemoteAddress FUnrealRuntime::GetObjectItemAddress(int32 Index) const
+{
+    const FRemoteAddress ItemArray = GetObjectItemArray();
+    if (ItemArray == InvalidRemoteAddress)
+    {
+        return InvalidRemoteAddress;
+    }
+
+    if (!Layout.bChunkedObjectArray)
+    {
+        return ItemArray + static_cast<uint64>(Index) * Layout.ObjectItemStride;
+    }
+
+    const int32 ChunkIndex = Index / Layout.ObjectsPerChunk;
+    const int32 IndexWithinChunk = Index % Layout.ObjectsPerChunk;
+
+    const FRemoteAddress Chunk = GetMemory().ReadCachedPointer(ItemArray + static_cast<uint64>(ChunkIndex) * sizeof(FRemoteAddress));
+    if (Chunk == InvalidRemoteAddress)
+    {
+        return InvalidRemoteAddress;
+    }
+
+    return Chunk + static_cast<uint64>(IndexWithinChunk) * Layout.ObjectItemStride;
 }
 
 FObjectHandle FUnrealRuntime::GetObjectByIndex(int32 Index) const
@@ -318,8 +359,11 @@ FObjectHandle FUnrealRuntime::GetObjectByIndex(int32 Index) const
         return FObjectHandle();
     }
 
-    const FRemoteAddress ItemArray = GetObjectItemArray();
-    const FRemoteAddress ItemAddress = ItemArray + static_cast<uint64>(Index) * FUnrealLayout::FUObjectItem_Stride;
+    const FRemoteAddress ItemAddress = GetObjectItemAddress(Index);
+    if (ItemAddress == InvalidRemoteAddress)
+    {
+        return FObjectHandle();
+    }
 
     return MakeHandle(GetMemory().ReadCachedPointer(ItemAddress + FUnrealLayout::FUObjectItem_Object));
 }
@@ -543,13 +587,18 @@ std::vector<FObjectHandle> FUnrealRuntime::FindObjectsOfClass(const FObjectHandl
     }
 
     const int32 Count = GetObjectCount();
-    const FRemoteAddress ItemArray = GetObjectItemArray();
 
     GetMemory().InvalidateCache();
 
     for (int32 Index = 0; Index < Count; ++Index)
     {
-        const FRemoteAddress ObjectAddress = GetMemory().ReadCachedPointer(ItemArray + static_cast<uint64>(Index) * FUnrealLayout::FUObjectItem_Stride);
+        const FRemoteAddress ItemAddress = GetObjectItemAddress(Index);
+        if (ItemAddress == InvalidRemoteAddress)
+        {
+            continue;
+        }
+
+        const FRemoteAddress ObjectAddress = GetMemory().ReadCachedPointer(ItemAddress + FUnrealLayout::FUObjectItem_Object);
         if (ObjectAddress == InvalidRemoteAddress)
         {
             continue;
@@ -576,13 +625,18 @@ std::vector<FObjectHandle> FUnrealRuntime::FindObjectsByNamePrefix(std::string_v
     std::vector<FObjectHandle> Results;
 
     const int32 Count = GetObjectCount();
-    const FRemoteAddress ItemArray = GetObjectItemArray();
 
     GetMemory().InvalidateCache();
 
     for (int32 Index = 0; Index < Count; ++Index)
     {
-        const FRemoteAddress ObjectAddress = GetMemory().ReadCachedPointer(ItemArray + static_cast<uint64>(Index) * FUnrealLayout::FUObjectItem_Stride);
+        const FRemoteAddress ItemAddress = GetObjectItemAddress(Index);
+        if (ItemAddress == InvalidRemoteAddress)
+        {
+            continue;
+        }
+
+        const FRemoteAddress ObjectAddress = GetMemory().ReadCachedPointer(ItemAddress + FUnrealLayout::FUObjectItem_Object);
         if (ObjectAddress == InvalidRemoteAddress)
         {
             continue;
@@ -628,30 +682,33 @@ FPropertyInfo FUnrealRuntime::FindPropertyInStruct(FRemoteAddress StructAddress,
         return Info;
     }
 
+    const int32 PropertyListOffset = Layout.GetPropertyListOffset();
+    const int32 PropertyNextOffset = Layout.GetPropertyNextOffset();
+    const int32 PropertyNameOffset = Layout.GetPropertyNameOffset();
+
     for (FRemoteAddress CurrentStruct = StructAddress; CurrentStruct != InvalidRemoteAddress;
-         CurrentStruct = GetMemory().ReadPointer(CurrentStruct + FUnrealLayout::UStruct_SuperStruct))
+         CurrentStruct = GetMemory().ReadPointer(CurrentStruct + Layout.UStruct_SuperStruct))
     {
-        for (FRemoteAddress Field = GetMemory().ReadPointer(CurrentStruct + FUnrealLayout::UStruct_Children); Field != InvalidRemoteAddress;
-             Field = GetMemory().ReadPointer(Field + FUnrealLayout::UField_Next))
+        for (FRemoteAddress Field = GetMemory().ReadPointer(CurrentStruct + PropertyListOffset); Field != InvalidRemoteAddress;
+             Field = GetMemory().ReadPointer(Field + PropertyNextOffset))
         {
-            const FName FieldName = GetMemory().Read<FName>(Field + FUnrealLayout::UObject_Name);
+            const FName FieldName = GetMemory().Read<FName>(Field + PropertyNameOffset);
             if (FieldName.ComparisonIndex != TargetName.ComparisonIndex)
             {
                 continue;
             }
 
             Info.PropertyAddress = Field;
-            Info.Offset = GetMemory().Read<int32>(Field + FUnrealLayout::UProperty_Offset_Internal);
-            Info.ElementSize = GetMemory().Read<int32>(Field + FUnrealLayout::UProperty_ElementSize);
-            Info.ArrayDim = GetMemory().Read<int32>(Field + FUnrealLayout::UProperty_ArrayDim);
-            Info.PropertyFlags = GetMemory().Read<uint64>(Field + FUnrealLayout::UProperty_PropertyFlags);
+            Info.Offset = GetMemory().Read<int32>(Field + Layout.UProperty_Offset_Internal);
+            Info.ElementSize = GetMemory().Read<int32>(Field + Layout.UProperty_ElementSize);
+            Info.ArrayDim = GetMemory().Read<int32>(Field + Layout.UProperty_ArrayDim);
+            Info.PropertyFlags = GetMemory().Read<uint64>(Field + Layout.UProperty_PropertyFlags);
 
-            const FObjectHandle FieldClass = MakeHandle(GetMemory().ReadPointer(Field + FUnrealLayout::UObject_Class));
-            if (FieldClass && FieldClass.GetName() == "BoolProperty")
+            if (IsBooleanProperty(Field))
             {
                 Info.bIsBitfield = true;
-                Info.ByteOffset = GetMemory().Read<uint8>(Field + FUnrealLayout::UBoolProperty_ByteOffset);
-                Info.FieldMask = GetMemory().Read<uint8>(Field + FUnrealLayout::UBoolProperty_FieldMask);
+                Info.ByteOffset = GetMemory().Read<uint8>(Field + Layout.UBoolProperty_FieldMask - 1);
+                Info.FieldMask = GetMemory().Read<uint8>(Field + Layout.UBoolProperty_FieldMask);
             }
 
             PropertyCache[CacheKey] = Info;
@@ -661,6 +718,24 @@ FPropertyInfo FUnrealRuntime::FindPropertyInStruct(FRemoteAddress StructAddress,
 
     PropertyCache[CacheKey] = Info;
     return Info;
+}
+
+bool FUnrealRuntime::IsBooleanProperty(FRemoteAddress PropertyAddress) const
+{
+    if (!Layout.UsesFieldProperties())
+    {
+        const FObjectHandle PropertyClass = MakeHandle(GetMemory().ReadPointer(PropertyAddress + Layout.UObject_Class));
+        return PropertyClass && PropertyClass.GetName() == "BoolProperty";
+    }
+
+    const FRemoteAddress FieldClass = GetMemory().ReadPointer(PropertyAddress + FieldClassOffset);
+    if (FieldClass == InvalidRemoteAddress)
+    {
+        return false;
+    }
+
+    const FName FieldClassName = GetMemory().Read<FName>(FieldClass);
+    return GetNameString(FieldClassName) == "BoolProperty";
 }
 
 FRemoteAddress FUnrealRuntime::FindFunctionInClass(FRemoteAddress ClassAddress, std::string_view FunctionName) const
@@ -686,18 +761,18 @@ FRemoteAddress FUnrealRuntime::FindFunctionInClass(FRemoteAddress ClassAddress, 
     }
 
     for (FRemoteAddress CurrentStruct = ClassAddress; CurrentStruct != InvalidRemoteAddress;
-         CurrentStruct = GetMemory().ReadPointer(CurrentStruct + FUnrealLayout::UStruct_SuperStruct))
+         CurrentStruct = GetMemory().ReadPointer(CurrentStruct + Layout.UStruct_SuperStruct))
     {
-        for (FRemoteAddress Field = GetMemory().ReadPointer(CurrentStruct + FUnrealLayout::UStruct_Children); Field != InvalidRemoteAddress;
-             Field = GetMemory().ReadPointer(Field + FUnrealLayout::UField_Next))
+        for (FRemoteAddress Field = GetMemory().ReadPointer(CurrentStruct + Layout.UStruct_Children); Field != InvalidRemoteAddress;
+             Field = GetMemory().ReadPointer(Field + Layout.UField_Next))
         {
-            const FName FieldName = GetMemory().Read<FName>(Field + FUnrealLayout::UObject_Name);
+            const FName FieldName = GetMemory().Read<FName>(Field + Layout.UObject_Name);
             if (FieldName.ComparisonIndex != TargetName.ComparisonIndex)
             {
                 continue;
             }
 
-            const FObjectHandle FieldClass = MakeHandle(GetMemory().ReadPointer(Field + FUnrealLayout::UObject_Class));
+            const FObjectHandle FieldClass = MakeHandle(GetMemory().ReadPointer(Field + Layout.UObject_Class));
             if (!FieldClass || FieldClass.GetName() != "Function")
             {
                 continue;
@@ -723,7 +798,7 @@ bool FUnrealRuntime::CallProcessEvent(FRemoteAddress ObjectAddress, FRemoteAddre
 
     if (Globals.ProcessEventVirtualIndex != InvalidIndex)
     {
-        const FRemoteAddress VirtualTable = GetMemory().ReadPointer(ObjectAddress + FUnrealLayout::UObject_VirtualTable);
+        const FRemoteAddress VirtualTable = GetMemory().ReadPointer(ObjectAddress + Layout.UObject_VirtualTable);
         if (VirtualTable != InvalidRemoteAddress)
         {
             const FRemoteAddress Entry = GetMemory().ReadPointer(VirtualTable + static_cast<uint64>(Globals.ProcessEventVirtualIndex) * sizeof(FRemoteAddress));

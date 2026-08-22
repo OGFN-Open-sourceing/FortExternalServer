@@ -60,6 +60,12 @@ namespace FEngineSignatures
 
     inline constexpr std::string_view AbilitySystemMarkAbilitySpecDirty = "48 89 5C 24 ? 57 48 83 EC 20 80 B9 ? ? ? ? ? 48 8B FA 48 8B D9 75 4A C6 81";
 
+    inline constexpr std::wstring_view WelcomePlayerAnchor = L"Join succeeded: %s";
+    inline constexpr std::wstring_view SpawnPlayActorAnchor = L"Join failure: %s";
+    inline constexpr std::wstring_view TickFlushAnchor = L"NetDriver::TickFlush";
+    inline constexpr std::wstring_view KickPlayerAnchor = L"KickPlayer";
+
     inline constexpr int32 CollectGarbageOperandOffset = 1;
     inline constexpr int32 CollectGarbageInstructionLength = 5;
+    inline constexpr size_t AnchorBacktrack = 0x1200;
 }

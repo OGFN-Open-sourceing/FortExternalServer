@@ -49,7 +49,7 @@ FName FObjectHandle::GetFName() const
         return FName();
     }
 
-    return Runtime->GetMemory().Read<FName>(Address + FUnrealLayout::UObject_Name);
+    return Runtime->GetMemory().Read<FName>(Address + Runtime->GetLayout().UObject_Name);
 }
 
 std::string FObjectHandle::GetName() const
@@ -102,7 +102,7 @@ FObjectHandle FObjectHandle::GetClass() const
         return FObjectHandle();
     }
 
-    return FObjectHandle(Runtime, Runtime->GetMemory().ReadPointer(Address + FUnrealLayout::UObject_Class));
+    return FObjectHandle(Runtime, Runtime->GetMemory().ReadPointer(Address + Runtime->GetLayout().UObject_Class));
 }
 
 FObjectHandle FObjectHandle::GetOuter() const
@@ -112,7 +112,7 @@ FObjectHandle FObjectHandle::GetOuter() const
         return FObjectHandle();
     }
 
-    return FObjectHandle(Runtime, Runtime->GetMemory().ReadPointer(Address + FUnrealLayout::UObject_Outer));
+    return FObjectHandle(Runtime, Runtime->GetMemory().ReadPointer(Address + Runtime->GetLayout().UObject_Outer));
 }
 
 int32 FObjectHandle::GetInternalIndex() const
@@ -122,7 +122,7 @@ int32 FObjectHandle::GetInternalIndex() const
         return InvalidIndex;
     }
 
-    return Runtime->GetMemory().Read<int32>(Address + FUnrealLayout::UObject_InternalIndex);
+    return Runtime->GetMemory().Read<int32>(Address + Runtime->GetLayout().UObject_InternalIndex);
 }
 
 bool FObjectHandle::IsA(const FObjectHandle& ClassHandle) const
@@ -134,8 +134,8 @@ bool FObjectHandle::IsA(const FObjectHandle& ClassHandle) const
 
     const FRemoteAddress TargetClass = ClassHandle.GetAddress();
 
-    for (FRemoteAddress CurrentClass = Runtime->GetMemory().ReadPointer(Address + FUnrealLayout::UObject_Class); CurrentClass != InvalidRemoteAddress;
-         CurrentClass = Runtime->GetMemory().ReadPointer(CurrentClass + FUnrealLayout::UStruct_SuperStruct))
+    for (FRemoteAddress CurrentClass = Runtime->GetMemory().ReadPointer(Address + Runtime->GetLayout().UObject_Class); CurrentClass != InvalidRemoteAddress;
+         CurrentClass = Runtime->GetMemory().ReadPointer(CurrentClass + Runtime->GetLayout().UStruct_SuperStruct))
     {
         if (CurrentClass == TargetClass)
         {
@@ -163,7 +163,7 @@ FPropertyInfo FObjectHandle::FindProperty(std::string_view PropertyName) const
         return FPropertyInfo();
     }
 
-    return Runtime->FindPropertyInStruct(Runtime->GetMemory().ReadPointer(Address + FUnrealLayout::UObject_Class), PropertyName);
+    return Runtime->FindPropertyInStruct(Runtime->GetMemory().ReadPointer(Address + Runtime->GetLayout().UObject_Class), PropertyName);
 }
 
 bool FObjectHandle::HasProperty(std::string_view PropertyName) const
@@ -315,7 +315,7 @@ FObjectHandle FObjectHandle::FindFunction(std::string_view FunctionName) const
         return FObjectHandle();
     }
 
-    const FRemoteAddress ClassAddress = Runtime->GetMemory().ReadPointer(Address + FUnrealLayout::UObject_Class);
+    const FRemoteAddress ClassAddress = Runtime->GetMemory().ReadPointer(Address + Runtime->GetLayout().UObject_Class);
     return FObjectHandle(Runtime, Runtime->FindFunctionInClass(ClassAddress, FunctionName));
 }
 
@@ -353,7 +353,7 @@ FRemoteAddress FObjectHandle::GetVirtualFunction(int32 Index) const
         return InvalidRemoteAddress;
     }
 
-    const FRemoteAddress VirtualTable = Runtime->GetMemory().ReadPointer(Address + FUnrealLayout::UObject_VirtualTable);
+    const FRemoteAddress VirtualTable = Runtime->GetMemory().ReadPointer(Address + Runtime->GetLayout().UObject_VirtualTable);
     if (VirtualTable == InvalidRemoteAddress)
     {
         return InvalidRemoteAddress;

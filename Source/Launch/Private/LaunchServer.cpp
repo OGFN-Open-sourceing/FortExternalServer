@@ -32,7 +32,7 @@ namespace FLaunchServer
 {
     void PrintBanner()
     {
-        FWindowsPlatform::EnableVirtualTerminalProcessing();
+        FPlatformMisc::EnableVirtualTerminalProcessing();
 
         std::printf("\x1b[96m");
         std::printf("FortExternalServer\n");

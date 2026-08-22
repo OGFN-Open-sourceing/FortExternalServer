@@ -4,11 +4,13 @@
 
 namespace FCoreUObjectSignatures
 {
-    inline constexpr std::string_view ObjectArrayReference = "48 8B 05 ? ? ? ? 48 8D 1C C8 81 4B ? ? ? ? ? 49 63 76 30";
-    inline constexpr std::string_view ObjectArrayReferenceAlternate = "48 8B 05 ? ? ? ? 48 8D 14 C8 EB 03 49 8B D6 8B 42 08";
+    inline constexpr std::string_view ObjectArrayReference = "48 8B 05 ? ? ? ? 48 8B 0C C8 48 8B 04 D1";
+    inline constexpr std::string_view ObjectArrayReferenceAlternate = "48 8B 05 ? ? ? ? 48 8B 0C C8 48 8D 04 D1";
 
-    inline constexpr std::string_view StaticFindObject = "48 89 5C 24 ? 48 89 74 24 ? 55 57 41 54 41 56 41 57 48 8B EC 48 83 EC 60 80 3D ? ? ? ? ? 45 0F B6 F1 49 8B F8";
-    inline constexpr std::string_view StaticFindObjectAlternate = "4C 8B DC 49 89 5B 08 49 89 6B 18 49 89 73 20 57 41 56 41 57 48 83 EC 60 80 3D";
+    inline constexpr std::string_view StaticFindObject = "48 89 5C 24 ? 48 89 74 24 ? 55 57 41 56 48 8D 6C 24 ? 48 81 EC ? ? ? ? 45 33 F6";
+    inline constexpr std::string_view StaticFindObjectAlternate = "48 89 5C 24 ? 48 89 74 24 ? 55 57 41 54 41 56 41 57 48 8B EC 48 83 EC 60";
+
+    inline constexpr std::wstring_view StaticFindObjectAnchor = L"Illegal call to StaticFindObject() while serializing object data!";
 
     inline constexpr std::string_view MemoryRealloc = "48 89 5C 24 08 48 89 74 24 10 57 48 83 EC ? 48 8B F1 41 8B D8 48 8B 0D ? ? ? ?";
 

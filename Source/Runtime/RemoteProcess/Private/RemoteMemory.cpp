@@ -2,6 +2,11 @@
 
 #include <cstring>
 
+namespace
+{
+    constexpr size_t PartialReadGranularity = 0x1000;
+}
+
 void FRemoteMemory::Initialize(const FProcessAttachment* InProcess)
 {
     Process = InProcess;
@@ -20,13 +25,7 @@ bool FRemoteMemory::ReadRaw(FRemoteAddress Address, void* Destination, size_t Si
         return false;
     }
 
-    SIZE_T BytesRead = 0;
-    if (::ReadProcessMemory(Process->GetProcessHandle(), reinterpret_cast<LPCVOID>(Address), Destination, Size, &BytesRead) == FALSE)
-    {
-        return false;
-    }
-
-    return BytesRead == Size;
+    return Process->ReadMemory(Address, Destination, Size);
 }
 
 bool FRemoteMemory::WriteRaw(FRemoteAddress Address, const void* Source, size_t Size) const
@@ -36,19 +35,7 @@ bool FRemoteMemory::WriteRaw(FRemoteAddress Address, const void* Source, size_t 
         return false;
     }
 
-    uint32 OldProtection = 0;
-    const bool bProtected = ProtectRange(Address, Size, PAGE_EXECUTE_READWRITE, OldProtection);
-
-    SIZE_T BytesWritten = 0;
-    const BOOL bWritten = ::WriteProcessMemory(Process->GetProcessHandle(), reinterpret_cast<LPVOID>(Address), Source, Size, &BytesWritten);
-
-    if (bProtected)
-    {
-        uint32 IgnoredProtection = 0;
-        ProtectRange(Address, Size, OldProtection, IgnoredProtection);
-    }
-
-    return bWritten != FALSE && BytesWritten == Size;
+    return Process->WriteMemory(Address, Source, Size);
 }
 
 const FRemoteMemory::FCachePage* FRemoteMemory::AcquirePage(FRemoteAddress PageBase) const
@@ -61,22 +48,27 @@ const FRemoteMemory::FCachePage* FRemoteMemory::AcquirePage(FRemoteAddress PageB
 
     FCachePage& Page = PageCache[PageBase];
 
-    SIZE_T BytesRead = 0;
-    if (::ReadProcessMemory(Process->GetProcessHandle(), reinterpret_cast<LPCVOID>(PageBase), Page.Bytes.data(), CachePageSize, &BytesRead) != FALSE && BytesRead == CachePageSize)
+    if (Process->ReadMemory(PageBase, Page.Bytes.data(), CachePageSize))
     {
         Page.bValid = true;
         return &Page;
     }
 
-    if (BytesRead > 0)
+    std::memset(Page.Bytes.data(), 0, CachePageSize);
+
+    size_t RecoveredBytes = 0;
+    while (RecoveredBytes < CachePageSize)
     {
-        Page.bValid = true;
-        std::memset(Page.Bytes.data() + BytesRead, 0, CachePageSize - BytesRead);
-        return &Page;
+        if (!Process->ReadMemory(PageBase + RecoveredBytes, Page.Bytes.data() + RecoveredBytes, PartialReadGranularity))
+        {
+            break;
+        }
+
+        RecoveredBytes += PartialReadGranularity;
     }
 
-    Page.bValid = false;
-    return nullptr;
+    Page.bValid = RecoveredBytes > 0;
+    return Page.bValid ? &Page : nullptr;
 }
 
 bool FRemoteMemory::ReadCachedRaw(FRemoteAddress Address, void* Destination, size_t Size) const
@@ -124,18 +116,13 @@ bool FRemoteMemory::IsCommitted(FRemoteAddress Address) const
         return false;
     }
 
-    MEMORY_BASIC_INFORMATION Information = {};
-    if (::VirtualQueryEx(Process->GetProcessHandle(), reinterpret_cast<LPCVOID>(Address), &Information, sizeof(Information)) == 0)
+    FRemoteRegionInfo Region;
+    if (!Process->QueryRegion(Address, Region))
     {
         return false;
     }
 
-    if (Information.State != MEM_COMMIT)
-    {
-        return false;
-    }
-
-    return (Information.Protect & (PAGE_NOACCESS | PAGE_GUARD)) == 0;
+    return Region.bCommitted;
 }
 
 bool FRemoteMemory::IsExecutable(FRemoteAddress Address) const
@@ -145,28 +132,23 @@ bool FRemoteMemory::IsExecutable(FRemoteAddress Address) const
         return false;
     }
 
-    MEMORY_BASIC_INFORMATION Information = {};
-    if (::VirtualQueryEx(Process->GetProcessHandle(), reinterpret_cast<LPCVOID>(Address), &Information, sizeof(Information)) == 0)
+    FRemoteRegionInfo Region;
+    if (!Process->QueryRegion(Address, Region))
     {
         return false;
     }
 
-    constexpr DWORD ExecutableMask = PAGE_EXECUTE | PAGE_EXECUTE_READ | PAGE_EXECUTE_READWRITE | PAGE_EXECUTE_WRITECOPY;
-    return Information.State == MEM_COMMIT && (Information.Protect & ExecutableMask) != 0;
+    return Region.bExecutable;
 }
 
-bool FRemoteMemory::ProtectRange(FRemoteAddress Address, size_t Size, uint32 NewProtection, uint32& OutOldProtection) const
+bool FRemoteMemory::ProtectRange(FRemoteAddress Address, size_t Size, ERemoteProtection Protection) const
 {
     if (!IsValid())
     {
         return false;
     }
 
-    DWORD PreviousProtection = 0;
-    const BOOL bChanged = ::VirtualProtectEx(Process->GetProcessHandle(), reinterpret_cast<LPVOID>(Address), Size, NewProtection, &PreviousProtection);
-
-    OutOldProtection = PreviousProtection;
-    return bChanged != FALSE;
+    return Process->ProtectMemory(Address, Size, Protection);
 }
 
 bool FRemoteMemory::FlushInstructionCacheRange(FRemoteAddress Address, size_t Size) const
@@ -176,7 +158,8 @@ bool FRemoteMemory::FlushInstructionCacheRange(FRemoteAddress Address, size_t Si
         return false;
     }
 
-    return ::FlushInstructionCache(Process->GetProcessHandle(), reinterpret_cast<LPCVOID>(Address), Size) != FALSE;
+    Process->FlushInstructionCacheRange(Address, Size);
+    return true;
 }
 
 std::string FRemoteMemory::ReadAnsiString(FRemoteAddress Address, size_t MaximumLength) const

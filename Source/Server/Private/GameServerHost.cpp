@@ -3,7 +3,6 @@
 #include "Runtime/Core/Public/Misc/Paths.h"
 
 #include <cmath>
-#include <conio.h>
 
 namespace
 {
@@ -16,6 +15,33 @@ namespace
     constexpr uint64 PumpWarmupTimeoutMilliseconds = 60000;
     constexpr uint64 AttachTimeoutMilliseconds = 180000;
     constexpr uint64 FrameTickIntervalMilliseconds = 100;
+}
+
+FObjectLayout FGameServerHost::MakeObjectLayoutFromProfile()
+{
+    const FObjectLayoutProfile& Source = GetActiveBuildProfile().ObjectLayout;
+
+    FObjectLayout Layout;
+    Layout.UObject_Class = Source.UObjectClass;
+    Layout.UObject_Name = Source.UObjectName;
+    Layout.UObject_Outer = Source.UObjectOuter;
+    Layout.UField_Next = Source.UFieldNext;
+    Layout.UStruct_SuperStruct = Source.UStructSuperStruct;
+    Layout.UStruct_Children = Source.UStructChildren;
+    Layout.UStruct_ChildProperties = Source.UStructChildProperties;
+    Layout.UStruct_PropertiesSize = Source.UStructPropertiesSize;
+    Layout.UFunction_FunctionFlags = Source.UFunctionFlags;
+    Layout.UFunction_ExecFunction = Source.UFunctionExec;
+    Layout.UProperty_ElementSize = Source.UPropertyElementSize;
+    Layout.UProperty_PropertyFlags = Source.UPropertyFlags;
+    Layout.UProperty_Offset_Internal = Source.UPropertyOffsetInternal;
+    Layout.UBoolProperty_FieldMask = Source.UBoolPropertyFieldMask;
+    Layout.FField_Next = Source.FFieldNext;
+    Layout.FField_Name = Source.FFieldName;
+    Layout.ObjectItemStride = Source.ObjectItemStride;
+    Layout.ObjectsPerChunk = Source.ObjectsPerChunk;
+    Layout.bChunkedObjectArray = Source.bChunkedObjectArray;
+    return Layout;
 }
 
 bool FGameServerHost::ResolveBuildRoot()
@@ -31,6 +57,7 @@ bool FGameServerHost::ResolveBuildRoot()
     }
 
     UE_LOG_DISPLAY("Host", "Build root resolved to " + FStringConv::ToNarrow(BuildRoot));
+    UE_LOG_DISPLAY("Host", std::string("Host platform ") + FPlatformMisc::GetPlatformName());
     return true;
 }
 
@@ -38,7 +65,7 @@ bool FGameServerHost::AttachToGameProcess()
 {
     Stage = EHostStage::AttachingToProcess;
 
-    FWindowsPlatform::EnableDebugPrivilege();
+    FProcessAttachment::PreparePrivileges();
 
     const std::wstring ExecutablePath = Settings.GetGameExecutablePath(BuildRoot);
     const std::wstring ExecutableName = Settings.GetGameExecutableName();
@@ -57,7 +84,7 @@ bool FGameServerHost::AttachToGameProcess()
     const std::wstring WorkingDirectory = FPaths::GetParentDirectory(ExecutablePath);
     const std::wstring Arguments = FStringConv::ToWide(Settings.BuildLaunchArguments());
 
-    if (!Process.LaunchAndAttach(ExecutablePath, Arguments, WorkingDirectory, false))
+    if (!Process.LaunchAndAttach(ExecutablePath, Arguments, WorkingDirectory))
     {
         return false;
     }
@@ -69,11 +96,11 @@ bool FGameServerHost::LoadPrimaryModuleImage()
 {
     Memory.Initialize(&Process);
 
-    const uint64 Deadline = FWindowsPlatform::GetTimeMilliseconds() + BootTimeoutMilliseconds;
+    const uint64 Deadline = FPlatformMisc::GetTimeMilliseconds() + BootTimeoutMilliseconds;
 
     const FRemoteModuleInfo* PrimaryModule = nullptr;
 
-    while (FWindowsPlatform::GetTimeMilliseconds() < Deadline)
+    while (FPlatformMisc::GetTimeMilliseconds() < Deadline)
     {
         if (!Process.IsAlive())
         {
@@ -90,7 +117,7 @@ bool FGameServerHost::LoadPrimaryModuleImage()
             }
         }
 
-        FWindowsPlatform::SleepMilliseconds(500);
+        FPlatformMisc::SleepMilliseconds(500);
     }
 
     if (PrimaryModule == nullptr)
@@ -125,7 +152,7 @@ bool FGameServerHost::InitialiseRemoteRuntime()
         return false;
     }
 
-    if (!UnrealRuntime.Initialize(Bridge, ModuleImage))
+    if (!UnrealRuntime.Initialize(Bridge, ModuleImage, MakeObjectLayoutFromProfile()))
     {
         return false;
     }
@@ -200,9 +227,9 @@ bool FGameServerHost::InstallHooks()
 
 bool FGameServerHost::WaitForMainMenu()
 {
-    const uint64 Deadline = FWindowsPlatform::GetTimeMilliseconds() + MainMenuTimeoutMilliseconds;
+    const uint64 Deadline = FPlatformMisc::GetTimeMilliseconds() + MainMenuTimeoutMilliseconds;
 
-    while (FWindowsPlatform::GetTimeMilliseconds() < Deadline)
+    while (FPlatformMisc::GetTimeMilliseconds() < Deadline)
     {
         if (!Process.IsAlive())
         {
@@ -218,7 +245,7 @@ bool FGameServerHost::WaitForMainMenu()
             return true;
         }
 
-        FWindowsPlatform::SleepMilliseconds(500);
+        FPlatformMisc::SleepMilliseconds(500);
     }
 
     UE_LOG_ERROR("Host", "The game never produced a local player controller");
@@ -238,9 +265,9 @@ bool FGameServerHost::WaitForAthenaWorld()
 {
     Stage = EHostStage::PreparingMatch;
 
-    const uint64 Deadline = FWindowsPlatform::GetTimeMilliseconds() + AthenaWorldTimeoutMilliseconds;
+    const uint64 Deadline = FPlatformMisc::GetTimeMilliseconds() + AthenaWorldTimeoutMilliseconds;
 
-    while (FWindowsPlatform::GetTimeMilliseconds() < Deadline)
+    while (FPlatformMisc::GetTimeMilliseconds() < Deadline)
     {
         if (!Process.IsAlive())
         {
@@ -258,7 +285,7 @@ bool FGameServerHost::WaitForAthenaWorld()
             return Match.PrepareMatch();
         }
 
-        FWindowsPlatform::SleepMilliseconds(500);
+        FPlatformMisc::SleepMilliseconds(500);
     }
 
     UE_LOG_ERROR("Host", "The Athena world never finished loading");
@@ -284,7 +311,7 @@ bool FGameServerHost::Start()
 
     FServerLog::Initialize(FPaths::Combine(BuildRoot, Settings.GetLogFileRelativePath()), Settings.GetLogVerbosity());
 
-    FWindowsPlatform::SetConsoleTitleText(L"FortExternalServer");
+    FPlatformMisc::SetConsoleTitleText(L"FortExternalServer");
 
     Settings.LogResolvedConfiguration();
 
@@ -342,7 +369,7 @@ bool FGameServerHost::Start()
 
 void FGameServerHost::RunUntilStopped()
 {
-    LastStatusTimestamp = FWindowsPlatform::GetTimeMilliseconds();
+    LastStatusTimestamp = FPlatformMisc::GetTimeMilliseconds();
 
     while (!bStopRequested)
     {
@@ -355,14 +382,14 @@ void FGameServerHost::RunUntilStopped()
         Bridge.ServicePendingHooks();
         ProcessConsoleInput();
 
-        const uint64 Now = FWindowsPlatform::GetTimeMilliseconds();
+        const uint64 Now = FPlatformMisc::GetTimeMilliseconds();
         if (Now - LastStatusTimestamp >= StatusIntervalMilliseconds)
         {
             LastStatusTimestamp = Now;
             PrintStatus();
         }
 
-        FWindowsPlatform::YieldThread();
+        FPlatformMisc::YieldThread();
     }
 
     Stage = EHostStage::Stopped;
@@ -431,12 +458,12 @@ void FGameServerHost::PrintStatus() const
 
 void FGameServerHost::ProcessConsoleInput()
 {
-    if (!Settings.AreConsoleCommandsEnabled() || _kbhit() == 0)
+    if (!Settings.AreConsoleCommandsEnabled() || !FPlatformMisc::IsKeyPressed())
     {
         return;
     }
 
-    const int Key = _getch();
+    const int Key = FPlatformMisc::ReadKey();
 
     switch (Key)
     {

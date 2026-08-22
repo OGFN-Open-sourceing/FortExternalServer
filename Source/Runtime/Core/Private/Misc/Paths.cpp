@@ -1,5 +1,6 @@
 #include "Runtime/Core/Public/Misc/Paths.h"
-#include "Runtime/Core/Public/HAL/WindowsPlatform.h"
+#include "Runtime/Core/Public/HAL/PlatformDetection.h"
+#include "Runtime/Core/Public/HAL/PlatformMisc.h"
 
 #include <algorithm>
 

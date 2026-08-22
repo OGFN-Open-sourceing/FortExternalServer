@@ -10,6 +10,8 @@ bool FFortAthenaMatch::Initialize(FEngineRuntime& InEngineRuntime, FNetworkHooks
     Settings = InSettings;
 
     PlayerBootstrap.Initialize(InEngineRuntime, Settings.PlayerSettings);
+    AIDirector.Initialize(InEngineRuntime, Settings.PlayerSettings);
+    AIDirector.SetSpawnLocationProvider([this]() { return PlayerBootstrap.ChooseWarmupSpawnLocation(); });
     TeamRoster.Initialize(Settings.TeamSize, std::max(Settings.MaxPlayers / std::max(Settings.TeamSize, 1), 1), Settings.bUseGameSessions);
 
     bInitialized = true;
@@ -20,6 +22,7 @@ void FFortAthenaMatch::Shutdown()
 {
     TrackedPlayers.clear();
     TeamRoster.Reset();
+    AIDirector.Reset();
     SafeZoneDirector.Reset();
     AircraftDirector.Reset();
 
@@ -59,6 +62,16 @@ bool FFortAthenaMatch::HasMatchEnded() const
 int32 FFortAthenaMatch::GetConnectedPlayerCount() const
 {
     return static_cast<int32>(TrackedPlayers.size());
+}
+
+int32 FFortAthenaMatch::GetAliveBotCount() const
+{
+    return AIDirector.GetAliveCount();
+}
+
+const FFortAIDirector& FFortAthenaMatch::GetAIDirector() const
+{
+    return AIDirector;
 }
 
 int32 FFortAthenaMatch::GetAlivePlayerCount() const
@@ -128,7 +141,7 @@ float FFortAthenaMatch::GetMatchTimeSeconds() const
         return 0.0f;
     }
 
-    return static_cast<float>(FWindowsPlatform::GetTimeMilliseconds() - MatchStartTimestamp) / 1000.0f;
+    return static_cast<float>(FPlatformMisc::GetTimeMilliseconds() - MatchStartTimestamp) / 1000.0f;
 }
 
 bool FFortAthenaMatch::TravelToAthena()
@@ -214,7 +227,7 @@ bool FFortAthenaMatch::PrepareMatch()
     SafeZoneDirector.Initialize(GameState, FVector(0.0f, 0.0f, 0.0f));
     AircraftDirector.Initialize(*EngineRuntime, GameState);
 
-    MatchStartTimestamp = FWindowsPlatform::GetTimeMilliseconds();
+    MatchStartTimestamp = FPlatformMisc::GetTimeMilliseconds();
 
     TransitionToPhase(EAthenaGamePhase::Warmup, GetMatchTimeSeconds());
 
@@ -273,6 +286,7 @@ void FFortAthenaMatch::Tick()
     ScanForNewConnections();
     RemoveStalePlayers();
     UpdateEliminationState();
+    AIDirector.UpdateEliminationState();
 
     switch (CurrentPhase)
     {
@@ -295,8 +309,8 @@ void FFortAthenaMatch::Tick()
     AFortGameStateAthena GameState = GetGameState();
     if (GameState)
     {
-        GameState.SetPlayersLeft(GetAlivePlayerCount());
-        GameState.SetTotalPlayers(GetConnectedPlayerCount());
+        GameState.SetPlayersLeft(GetAlivePlayerCount() + GetAliveBotCount());
+        GameState.SetTotalPlayers(GetConnectedPlayerCount() + AIDirector.GetSpawnedCount());
     }
 }
 
@@ -357,7 +371,7 @@ void FFortAthenaMatch::InitializeJoiningPlayer(const AFortPlayerControllerAthena
     FTrackedPlayer Player;
     Player.ControllerAddress = Controller.GetAddress();
     Player.ConnectionAddress = ConnectionAddress;
-    Player.JoinTimeMilliseconds = FWindowsPlatform::GetTimeMilliseconds();
+    Player.JoinTimeMilliseconds = FPlatformMisc::GetTimeMilliseconds();
 
     const AFortPlayerStateAthena PlayerState = Controller.GetPlayerState();
     Player.PlayerName = PlayerState ? PlayerState.GetPlayerName() : std::string("Player");
@@ -479,6 +493,17 @@ void FFortAthenaMatch::UpdateWarmupPhase(float CurrentTime)
 
     bMatchStarted = true;
 
+    if (Settings.bPlayerBotsEnabled && Settings.PlayerBotCount > 0)
+    {
+        const int32 FirstBotTeam = 2 + std::max(TeamRoster.GetAssignedPlayerCount(), 0);
+        AIDirector.SpawnPlayerBots(Settings.PlayerBotCount, FirstBotTeam);
+    }
+
+    if (Settings.bBossesEnabled)
+    {
+        AIDirector.SpawnBosses();
+    }
+
     AircraftDirector.SpawnFlightPath(FVector(0.0f, 0.0f, 0.0f), GetActiveBuildProfile().MapRadius);
     AircraftDirector.Start(Settings.AircraftFlightSeconds, CurrentTime);
 
@@ -539,7 +564,7 @@ void FFortAthenaMatch::UpdateSafeZonePhase(float CurrentTime)
 {
     SafeZoneDirector.Tick(CurrentTime);
 
-    if (TeamRoster.GetAliveTeamCount() <= 1 || GetAlivePlayerCount() <= 1)
+    if ((TeamRoster.GetAliveTeamCount() <= 1 && GetAliveBotCount() == 0) || (GetAlivePlayerCount() <= 1 && GetAliveBotCount() == 0))
     {
         WinningTeam = TeamRoster.GetLastStandingTeam();
         AnnounceVictory(WinningTeam);

@@ -1,5 +1,6 @@
 #include "Runtime/Core/Public/Misc/Guid.h"
-#include "Runtime/Core/Public/HAL/WindowsPlatform.h"
+#include "Runtime/Core/Public/HAL/PlatformDetection.h"
+#include "Runtime/Core/Public/HAL/PlatformMisc.h"
 
 #include <cstdio>
 
@@ -16,7 +17,7 @@ FGuid FGuid::NewGuid()
     if (::CoCreateGuid(&PlatformGuid) != S_OK)
     {
         FGuid Fallback;
-        Fallback.A = static_cast<uint32>(FWindowsPlatform::GetTimeMilliseconds());
+        Fallback.A = static_cast<uint32>(FPlatformMisc::GetTimeMilliseconds());
         Fallback.B = ::GetCurrentThreadId();
         Fallback.C = ::GetTickCount();
         Fallback.D = static_cast<uint32>(reinterpret_cast<uint64>(&Fallback));

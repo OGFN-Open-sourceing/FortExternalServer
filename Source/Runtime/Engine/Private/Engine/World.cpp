@@ -345,6 +345,80 @@ FObjectHandle UWorld::SpawnActor(const FObjectHandle& ClassHandle, const FTransf
     return Runtime.MakeHandle(Result);
 }
 
+FObjectHandle UWorld::GetTransientPackage() const
+{
+    if (!IsValid())
+    {
+        return FObjectHandle();
+    }
+
+    return Object.GetRuntime().FindObject("Package /Engine/Transient");
+}
+
+FObjectHandle UWorld::BeginDeferredSpawnActor(const FObjectHandle& ClassHandle, const FTransform& Transform) const
+{
+    if (!IsValid() || !ClassHandle)
+    {
+        return FObjectHandle();
+    }
+
+    const FUnrealRuntime& Runtime = Object.GetRuntime();
+
+    const FObjectHandle GameplayStatics = Runtime.GetClassDefaultObject("GameplayStatics");
+    if (!GameplayStatics)
+    {
+        return FObjectHandle();
+    }
+
+    struct FBeginDeferredActorSpawnParameters
+    {
+        FRemoteAddress WorldContextObject = InvalidRemoteAddress;
+        FRemoteAddress ActorClass = InvalidRemoteAddress;
+        FTransform SpawnTransform;
+        uint8 CollisionHandlingOverride = 0;
+        uint8 Padding[7] = {};
+        FRemoteAddress Owner = InvalidRemoteAddress;
+        FRemoteAddress ReturnValue = InvalidRemoteAddress;
+    } Parameters;
+
+    Parameters.WorldContextObject = Object.GetAddress();
+    Parameters.ActorClass = ClassHandle.GetAddress();
+    Parameters.SpawnTransform = Transform;
+
+    if (!GameplayStatics.InvokeFunction("BeginDeferredActorSpawnFromClass", &Parameters, sizeof(Parameters)))
+    {
+        return FObjectHandle();
+    }
+
+    return Runtime.MakeHandle(Parameters.ReturnValue);
+}
+
+bool UWorld::FinishSpawningActor(const FObjectHandle& Actor, const FTransform& Transform) const
+{
+    if (!IsValid() || !Actor)
+    {
+        return false;
+    }
+
+    const FObjectHandle GameplayStatics = Object.GetRuntime().GetClassDefaultObject("GameplayStatics");
+    if (!GameplayStatics)
+    {
+        return false;
+    }
+
+    struct FFinishSpawningActorParameters
+    {
+        FRemoteAddress Actor = InvalidRemoteAddress;
+        FTransform SpawnTransform;
+        FRemoteAddress ReturnValue = InvalidRemoteAddress;
+    } Parameters;
+
+    Parameters.Actor = Actor.GetAddress();
+    Parameters.SpawnTransform = Transform;
+
+    return GameplayStatics.InvokeFunction("FinishSpawningActor", &Parameters, sizeof(Parameters));
+}
+
 bool UWorld::ExecuteConsoleCommand(const std::string& Command) const
 {
     if (!IsValid())

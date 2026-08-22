@@ -20,50 +20,49 @@ FRemoteAddress FRemoteAllocation::FindFreeRegionNear(const FProcessAttachment& P
 
     for (uint64 Candidate = AlignUp<uint64>(Anchor + AllocationGranularity, AllocationGranularity); Candidate < UpperBound; Candidate += AllocationGranularity)
     {
-        MEMORY_BASIC_INFORMATION Information = {};
-        if (::VirtualQueryEx(Process.GetProcessHandle(), reinterpret_cast<LPCVOID>(Candidate), &Information, sizeof(Information)) == 0)
+        FRemoteRegionInfo Region;
+        if (!Process.QueryRegion(Candidate, Region))
         {
             break;
         }
 
-        if (Information.State != MEM_FREE || Information.RegionSize < Size)
+        if (!Region.bFree || Region.RegionSize < Size)
         {
-            Candidate = AlignUp<uint64>(reinterpret_cast<uint64>(Information.BaseAddress) + Information.RegionSize, AllocationGranularity) - AllocationGranularity;
+            Candidate = AlignUp<uint64>(Region.BaseAddress + Region.RegionSize, AllocationGranularity) - AllocationGranularity;
             continue;
         }
 
-        const LPVOID Allocated = ::VirtualAllocEx(Process.GetProcessHandle(), reinterpret_cast<LPVOID>(Candidate), Size, MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
-        if (Allocated != nullptr)
+        const FRemoteAddress Allocated = Process.AllocateMemory(Candidate, Size);
+        if (Allocated != InvalidRemoteAddress)
         {
-            return reinterpret_cast<FRemoteAddress>(Allocated);
+            return Allocated;
         }
     }
 
     uint64 Candidate = AlignDown<uint64>(Anchor - AllocationGranularity, AllocationGranularity);
     while (Candidate > LowerBound)
     {
-        MEMORY_BASIC_INFORMATION Information = {};
-        if (::VirtualQueryEx(Process.GetProcessHandle(), reinterpret_cast<LPCVOID>(Candidate), &Information, sizeof(Information)) == 0)
+        FRemoteRegionInfo Region;
+        if (!Process.QueryRegion(Candidate, Region))
         {
             break;
         }
 
-        if (Information.State == MEM_FREE && Information.RegionSize >= Size)
+        if (Region.bFree && Region.RegionSize >= Size)
         {
-            const LPVOID Allocated = ::VirtualAllocEx(Process.GetProcessHandle(), reinterpret_cast<LPVOID>(Candidate), Size, MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
-            if (Allocated != nullptr)
+            const FRemoteAddress Allocated = Process.AllocateMemory(Candidate, Size);
+            if (Allocated != InvalidRemoteAddress)
             {
-                return reinterpret_cast<FRemoteAddress>(Allocated);
+                return Allocated;
             }
         }
 
-        const uint64 RegionBase = reinterpret_cast<uint64>(Information.AllocationBase != nullptr ? Information.AllocationBase : Information.BaseAddress);
-        if (RegionBase < AllocationGranularity)
+        if (Region.BaseAddress < AllocationGranularity)
         {
             break;
         }
 
-        Candidate = AlignDown<uint64>(RegionBase - AllocationGranularity, AllocationGranularity);
+        Candidate = AlignDown<uint64>(Region.BaseAddress - AllocationGranularity, AllocationGranularity);
     }
 
     return InvalidRemoteAddress;
@@ -81,14 +80,13 @@ bool FRemoteAllocation::Reserve(const FProcessAttachment& Process, const FRemote
 
     if (BaseAddress == InvalidRemoteAddress)
     {
-        const LPVOID Fallback = ::VirtualAllocEx(Process.GetProcessHandle(), nullptr, TotalSize, MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
-        if (Fallback == nullptr)
+        BaseAddress = Process.AllocateMemory(InvalidRemoteAddress, TotalSize);
+        if (BaseAddress == InvalidRemoteAddress)
         {
-            UE_LOG_ERROR("RemoteProcess", "Failed to reserve remote code arena: " + FStringConv::ToNarrow(FWindowsPlatform::GetLastErrorText(::GetLastError())));
+            UE_LOG_ERROR("RemoteProcess", "Failed to reserve remote code arena: " + FStringConv::ToNarrow(FPlatformMisc::GetLastErrorText()));
             return false;
         }
 
-        BaseAddress = reinterpret_cast<FRemoteAddress>(Fallback);
         UE_LOG_WARNING("RemoteProcess", "Remote code arena is outside relative branch range of the game image");
     }
 
@@ -105,7 +103,7 @@ void FRemoteAllocation::Release()
 {
     if (OwningProcess != nullptr && BaseAddress != InvalidRemoteAddress && OwningProcess->IsAttached())
     {
-        ::VirtualFreeEx(OwningProcess->GetProcessHandle(), reinterpret_cast<LPVOID>(BaseAddress), 0, MEM_RELEASE);
+        OwningProcess->FreeMemory(BaseAddress, TotalSize);
     }
 
     OwningProcess = nullptr;
