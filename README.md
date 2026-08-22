@@ -157,110 +157,85 @@ Every route writes `Binaries/Win64/FortExternalServer.exe`.
 
 ## Installing
 
-Copy two things into the build folder, the one that has `FortniteGame` and `Engine` directly inside it:
+Copy the executable into the build folder, the one that has `FortniteGame` and `Engine` directly inside it:
 
 ```
 YourFortniteBuild/
 ├── Engine/
 ├── FortniteGame/
-├── Config/
-│   └── DefaultServer.ini
 └── FortExternalServer.exe
 ```
 
-The server finds the build root by walking up from its own location until it sees both `FortniteGame` and
-`Engine`, so a subfolder works too as long as those two are somewhere above it.
-
-`Config/` is optional. Without it the server falls back to the values compiled into `Configuration.h`.
+That is the whole install. The server finds the build root by walking up from its own location until it sees
+both `FortniteGame` and `Engine`, so a subfolder works too as long as those two are somewhere above it.
 
 ---
 
 ## Configuring
 
-Three layers, each overriding the one before it.
+One header, `Source/Server/Public/Configuration.h`. Edit it and rebuild. There is no ini file and no command
+line, deliberately, the same way Erbium does it.
 
-1. **`Source/Server/Public/Configuration.h`** — compiled in. Edit and rebuild. This is the layer to use when
-   you want a build that behaves a certain way by default.
-2. **`Config/DefaultServer.ini`** — read at startup. Change without rebuilding.
-3. **Command line** — highest priority. Best for one-off runs.
-
-Whatever wins, the resolved configuration is printed in full at startup under the `Config` category, so you can
-always confirm what the server actually used.
-
-### Session
-
-| Option | ini section | Command line | Default |
-| --- | --- | --- | --- |
-| Playlist | `[Session] Playlist` | `-Playlist=` | `Playlist_DefaultSolo` |
-| Map | `[Session] Map` | `-MapToLoad=` | `Athena_Terrain` |
-| Game mode class | `[Session] GameMode` | | `/Game/Athena/Athena_GameMode.Athena_GameMode_C` |
-| Port | `[Session] Port` | `-Port=` | `7777` |
-| Max players | `[Session] MaxPlayers` | `-MaxPlayers=` | `100` |
-| Team size | `[Session] TeamSize` | `-TeamSize=` | `1` |
-| Join in progress | `[Session] AllowJoinInProgress` | `-bJoinInProgress` | `False` |
-| Spectate after death | `[Session] AllowSpectateAfterDeath` | | `True` |
-
-`Playlist` takes either a short name (`Playlist_DefaultSolo`) or a full object path. Short names are expanded
-for you.
-
-### Match flow
-
-| Option | ini section | Command line | Default |
-| --- | --- | --- | --- |
-| Warmup countdown seconds | `[Match] WarmupCountdownSeconds` | `-WarmupSeconds=` | `120` |
-| Minimum players to start | `[Match] MinimumPlayersToStart` | `-MinimumPlayers=` | `2` |
-| Battle bus flight seconds | `[Match] AircraftFlightSeconds` | | `45` |
-| Delay before first storm phase | `[Match] SafeZoneStartDelaySeconds` | | `30` |
-| Delay before match ends | `[Match] EndOfMatchDelaySeconds` | | `15` |
-| Skip warmup entirely | | `-bSkipWarmup` | off |
-| Start with no players | | `-bStartWithoutPlayers` | off |
-
-### Gameplay
-
-| Option | ini section | Command line | Default |
-| --- | --- | --- | --- |
-| Starting health | `[Gameplay] StartingHealth` | | `100` |
-| Starting shield | `[Gameplay] StartingShield` | | `0` |
-| Max health | `[Gameplay] MaxHealth` | | `100` |
-| Max shield | `[Gameplay] MaxShield` | | `100` |
-| Backpack size | `[Gameplay] BackpackSize` | | `5` |
-| Health regeneration | `[Gameplay] HealthRegenEnabled` | `-bHealthRegen` | `False` |
-| Friendly fire | `[Gameplay] FriendlyFireEnabled` | `-bFriendlyFire` | `False` |
-| Starting loadout | `[Gameplay] StartingLoadout` | `-StartingLoadout=` | pickaxe only |
-
-`StartingLoadout` is a comma separated list of item definition names, for example:
-
-```
-StartingLoadout=WID_Harvest_Pickaxe_Athena_C_T01,WID_Shotgun_Standard_Athena_UC_Ore_T03,Athena_Shields
+```cpp
+struct FConfiguration
+{
+    static inline auto Playlist = "Playlist_DefaultSolo";
+    static inline auto MapToLoad = "Athena_Terrain";
+    static inline auto StartingLoadout = "WID_Harvest_Pickaxe_Athena_C_T01";
+    static inline auto Port = 7777;
+    static inline auto MaxTickRate = 30;
+    static inline auto MaxPlayers = 100;
+    static inline auto TeamSize = 1;
+    static inline auto MinimumPlayers = 2;
+    static inline auto WarmupTime = 120;
+    static inline auto bSessions = false;
+    static inline auto bJoinInProgress = false;
+    static inline auto bFriendlyFire = false;
+    static inline auto bHealthRegen = false;
+    static inline auto bSpectateAfterDeath = true;
+    static inline auto bAttachToRunningProcess = false;
+    static inline auto bSkipVersionCheck = false;
+    static inline constexpr auto bEnableConsole = true;
+    static inline constexpr auto bVerboseLogs = false;
+};
 ```
 
-Names are resolved directly, then as `Name.Name`, then loaded on demand. Anything that cannot be resolved is
-logged and skipped rather than failing the spawn.
+| Option | Meaning |
+| --- | --- |
+| `Playlist` | Short name like `Playlist_DefaultSolo`, or a full object path. Short names are expanded for you. |
+| `MapToLoad` | Map to travel to. |
+| `StartingLoadout` | Comma separated item definition names given to every player on spawn. |
+| `Port` | Port players connect on. |
+| `MaxTickRate` | Server tick rate. |
+| `MaxPlayers` | Session capacity. |
+| `TeamSize` | Players per team. `1` solo, `2` duos, `4` squads. |
+| `MinimumPlayers` | Players needed before the warmup countdown starts. `0` starts with nobody. |
+| `WarmupTime` | Warmup countdown in seconds. `0` skips straight to the bus. |
+| `bSessions` | Off, the server picks teams itself and sets SquadId from the team index. On, a team already assigned through the game session is kept and SquadId is left alone. |
+| `bJoinInProgress` | Allow players to join after the match has started. |
+| `bFriendlyFire` | Allow teammates to damage each other. |
+| `bHealthRegen` | Leave the health and shield regeneration effects in place. |
+| `bSpectateAfterDeath` | Let eliminated players spectate. |
+| `bAttachToRunningProcess` | Wait for a game you started yourself instead of launching one. |
+| `bSkipVersionCheck` | Run against a build whose changelist does not match this branch. |
+| `bEnableConsole` | Enable the console keys listed below. |
+| `bVerboseLogs` | Verbose logging instead of display level. |
 
-### Process and runtime
+`StartingLoadout` takes several entries:
 
-| Option | ini section | Command line | Default |
-| --- | --- | --- | --- |
-| Game executable path | `[Process] GameExecutable` | | `FortniteGame/Binaries/Win64/FortniteClient-Win64-Shipping.exe` |
-| Extra launch arguments | `[Process] ExtraArguments` | | empty |
-| Attach timeout seconds | `[Process] AttachTimeoutSeconds` | | `180` |
-| Attach instead of launching | `[Process] AttachToRunningProcess` | `-bAttachToRunningProcess` | `False` |
-| Server tick rate | `[Runtime] MaxTickRate` | `-MaxTickRate=` | `30` |
-| Match update interval ms | `[Runtime] FrameTickIntervalMilliseconds` | | `100` |
-| Console commands | `[Runtime] EnableConsoleCommands` | `-bDisableConsole` | `True` |
-| Dump objects at startup | `[Runtime] DumpObjectsOnStart` | `-bDumpObjectsOnStart` | `False` |
-| Enforce version match | `[Engine] EnforceVersionMatch` | `-bSkipVersionCheck` | `True` |
-| Log level | `[Logging] LogLevel` | `-LogLevel=` | `Display` |
-| Log file | `[Logging] LogFile` | | `Saved/Logs/FortExternalServer.log` |
+```cpp
+static inline auto StartingLoadout = "WID_Harvest_Pickaxe_Athena_C_T01,WID_Shotgun_Standard_Athena_UC_Ore_T03,Athena_Shields";
+```
 
-`FrameTickIntervalMilliseconds` controls how often the match logic runs on the game thread. Lowering it makes
-the server more responsive and costs frame time, because the game thread waits on the server for that update.
-Raising it does the reverse. `100` is a reasonable middle.
+Names resolve directly, then as `Name.Name`, then load on demand. Anything unresolvable is logged and skipped
+rather than failing the spawn.
 
-`AttachToRunningProcess` skips launching and waits for a game process that is already running. Useful when you
-want to start the game yourself with your own arguments.
+The resolved configuration is printed at startup under the `Config` category, so you can always confirm what
+the build you are running actually used.
 
-Log levels, quietest to loudest: `Fatal`, `Error`, `Warning`, `Display`, `Verbose`.
+Values that describe the build rather than a preference, storm timings, flight time, starting health and
+shield, backpack size, live in the build profile instead. See
+[Porting to another version](#porting-to-another-version).
 
 ---
 
@@ -270,9 +245,9 @@ Double click the executable, or from a terminal in the build folder:
 
 ```
 FortExternalServer.exe
-FortExternalServer.exe -Playlist=Playlist_DefaultDuo -TeamSize=2 -MinimumPlayers=4
-FortExternalServer.exe -bSkipWarmup -bStartWithoutPlayers -LogLevel=Verbose
 ```
+
+There are no arguments. Everything comes from `Configuration.h` at build time.
 
 Startup runs through these stages, each named in the log if something goes wrong:
 
@@ -326,7 +301,9 @@ Then work through these, in this order:
 
 Rename it for your version and update the values inside. This one file holds the version number and changelist,
 the UObject and UProperty layout offsets, every asset path, the ability sets, the storm phase table, the known
-playlists and the world constants. For a nearby version this is often the only file that needs real changes.
+playlists, the world constants and the match tuning values, flight time, storm delay, end of match delay,
+starting and maximum health and shield, and backpack size. For a nearby version this is often the only file
+that needs real changes.
 
 **2. `Source/Runtime/CoreUObject/Public/UObject/UnrealLayout.h`**
 
@@ -346,7 +323,7 @@ Byte patterns for the networking functions. This is where most of the porting wo
 resolve is named individually in the startup log, so run it once and the log tells you exactly which patterns
 need attention rather than making you guess.
 
-Keep `EnforceVersionMatch` on for a branch once it works. It is what stops someone running a Season 3 build
+Leave `bSkipVersionCheck` off for a branch once it works. It is what stops someone running a Season 3 build
 against a Season 4 game and getting confusing crashes instead of a clear message.
 
 ---
@@ -375,7 +352,8 @@ log.
 
 **"This build reports changelist X but the server targets Y"**
 
-Exactly what it says. Use the branch built for that changelist, or pass `-bSkipVersionCheck` to try anyway.
+Exactly what it says. Use the branch built for that changelist, or set `bSkipVersionCheck` in
+`Configuration.h` to try anyway.
 
 **Players connect but never spawn**
 
@@ -384,8 +362,8 @@ reported there. Use the `D` object dump to confirm the real names in your build.
 
 **Poor frame rate once the server is running**
 
-Raise `[Runtime] FrameTickIntervalMilliseconds`. The game thread waits on the server for each match update, so
-a shorter interval costs frame time.
+Lower `MaxTickRate`. The game thread waits on the server for each match update, so a higher rate costs frame
+time.
 
 ---
 
@@ -393,9 +371,10 @@ a shorter interval costs frame time.
 
 Built by studying the open source Fortnite server projects that came before it:
 
-- [PongooDev/Core](https://github.com/PongooDev/Core) — configuration surface and version handling
-- [plooshi/Erbium](https://github.com/plooshi/Erbium) — module layout, signature resolution and the compiled
-  configuration style
+- [PongooDev/Core](https://github.com/PongooDev/Core) — version handling, and the `MapToLoad` and
+  `bSessions` options
+- [plooshi/Erbium](https://github.com/plooshi/Erbium) — module layout, signature resolution and the single
+  header configuration style
 - [Ducki67/FN-Gameserver-Center](https://github.com/Ducki67/FN-Gameserver-Center) — the Season 3 sources that
   the byte patterns and match flow were derived from, Raider 3.5 in particular
 
