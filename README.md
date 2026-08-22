@@ -15,10 +15,14 @@ game, turns it into a listen server and drives the whole match from its own proc
 This branch (`main`) is documentation only. The server itself lives on a branch per Fortnite version, so a
 version can be worked on, broken and fixed without disturbing any other.
 
-| Branch | Target | Status |
-| --- | --- | --- |
-| `main` | Documentation | You are here |
-| `season-3` | 3.6, Chapter 1 Season 3, CL 4019403, UE 4.19 | Active |
+| Branch | Target | Host | Status |
+| --- | --- | --- | --- |
+| `main` | Documentation | | You are here |
+| `season-3` | 3.6, Chapter 1 Season 3, CL 4019403, UE 4.19 | Windows | Active |
+| `season-13` | 13.40, Chapter 2 Season 3, CL 14113327, UE 4.25 | Windows and macOS | Active |
+
+`season-13` targets the last Fortnite version Epic shipped for macOS, so that branch runs on both hosts.
+Bots and bosses exist there too, since Chapter 2 is where the AI is.
 
 To work on the server, check out a version branch:
 
@@ -26,6 +30,12 @@ To work on the server, check out a version branch:
 git clone https://github.com/OGFN-Open-sourceing/FortExternalServer
 cd FortExternalServer
 git checkout season-3
+```
+
+or
+
+```
+git checkout season-13
 ```
 
 New versions branch off an existing one. See [Porting to another version](#porting-to-another-version).
@@ -82,16 +92,19 @@ or reports itself as missing.
 
 **To run**
 
-- Windows 10 or Windows 11, x64
+- Windows 10 or Windows 11 x64, or macOS on a build whose branch supports it
 - A Fortnite build matching the branch you built, including its `FortniteGame` and `Engine` folders
-- Administrator is not required in the usual case, but helps if the game is already running and you are
-  attaching to it
+- On Windows, administrator is not required in the usual case, but helps when attaching to a game you started
+  yourself
+- On macOS, `task_for_pid` needs privileges. Run the server with `sudo`, or sign it with the
+  `com.apple.security.cs.debugger` entitlement. The server tells you which is missing if it cannot attach.
 
 **To build**
 
 - Visual Studio 2026 with the Desktop development with C++ workload, or
 - CMake 3.21 or newer with Ninja, or
-- A mingw-w64 toolchain if you are building from macOS or Linux
+- Xcode command line tools when building the macOS host, or
+- A mingw-w64 toolchain when cross compiling a Windows binary from macOS or Linux
 
 No third party libraries. No package restore. C++20 and the Windows SDK are all it needs.
 
@@ -126,10 +139,21 @@ cmake --preset ninja-release
 cmake --build --preset ninja-release
 ```
 
-### CMake from macOS or Linux
+### macOS host
 
-The output is always a Windows executable, so building elsewhere means cross compiling. Install mingw-w64
-first:
+On a branch that supports macOS, building on a Mac produces a native macOS host that attaches to the macOS
+Fortnite build:
+
+```
+cmake --preset macos-release
+cmake --build --preset macos-release
+```
+
+The output lands in `Binaries/Mac/`. It builds x86_64 because the game is x86_64.
+
+### Cross compiling a Windows binary from macOS or Linux
+
+To produce the Windows executable from a non Windows machine, install mingw-w64 first:
 
 ```
 brew install mingw-w64          # macOS
@@ -151,7 +175,8 @@ For quick cross compiles without CMake:
 make
 ```
 
-Every route writes `Binaries/Win64/FortExternalServer.exe`.
+Windows routes write `Binaries/Win64/FortExternalServer.exe`. The macOS route writes
+`Binaries/Mac/FortExternalServer`.
 
 ---
 
@@ -188,6 +213,9 @@ struct FConfiguration
     static inline auto TeamSize = 1;
     static inline auto MinimumPlayers = 2;
     static inline auto WarmupTime = 120;
+    static inline auto bPlayerBots = false;
+    static inline auto PlayerBotCount = 0;
+    static inline auto bBosses = false;
     static inline auto bSessions = false;
     static inline auto bJoinInProgress = false;
     static inline auto bFriendlyFire = false;
@@ -211,6 +239,9 @@ struct FConfiguration
 | `TeamSize` | Players per team. `1` solo, `2` duos, `4` squads. |
 | `MinimumPlayers` | Players needed before the warmup countdown starts. `0` starts with nobody. |
 | `WarmupTime` | Warmup countdown in seconds. `0` skips straight to the bus. |
+| `bPlayerBots` | Spawn AI players. Only on branches whose build has them. |
+| `PlayerBotCount` | How many AI players to spawn when the match starts. |
+| `bBosses` | Spawn the season's bosses with their mythic loadouts. |
 | `bSessions` | Off, the server picks teams itself and sets SquadId from the team index. On, a team already assigned through the game session is kept and SquadId is left alone. |
 | `bJoinInProgress` | Allow players to join after the match has started. |
 | `bFriendlyFire` | Allow teammates to damage each other. |
@@ -282,6 +313,28 @@ file for what you expected, and use the exact name it reports.
 
 ---
 
+## Bots and bosses
+
+Fortnite calls its AI players Phoebe. Spawning the Phoebe pawn is enough on its own, the engine attaches
+`BP_PhoebePlayerController` to it. Around that the server sets up what the game expects: a server bot manager
+wired to the bot mutator, and an AI director that is spawned and activated once per match.
+
+Bosses are the same machinery with a name, a location, a mythic loadout and more shield. They live in the
+build profile:
+
+```cpp
+MakeBoss("Ocean", { "WID_Harvest_Pickaxe_Athena_C_T01", "WID_Assault_Burst_Athena_UC_Ore_T03", "Athena_Bottomless_ChugJug" },
+    FVector(-90000.0f, -60000.0f, 2000.0f)),
+```
+
+The `season-13` profile carries Ocean, Jules and Kit. **Their coordinates are placeholders.** Use the `D`
+console command to dump objects, find the real POI positions for your build, and replace them. A boss with no
+real location is spawned at a warmup spawn point and says so in the log.
+
+If a build has no bots, the server says which class was missing rather than failing quietly.
+
+---
+
 ## Porting to another version
 
 The codebase is built to be branched. Almost everything is version independent: the memory layer, the hook
@@ -305,11 +358,13 @@ playlists, the world constants and the match tuning values, flight time, storm d
 starting and maximum health and shield, and backpack size. For a nearby version this is often the only file
 that needs real changes.
 
-**2. `Source/Runtime/CoreUObject/Public/UObject/UnrealLayout.h`**
+**2. Object layout, inside that same profile**
 
-Engine structure offsets. Stable within an Unreal version. Changing Unreal version is where these move, in
-particular `UStruct` and `UProperty` layout on 4.22 and later, and again on 4.25 where properties become
-`FField`.
+`ObjectLayout` holds the engine structure offsets. They are stable within an Unreal version and move between
+versions: `UStruct` and `UProperty` shift on 4.22, the object array becomes chunked on 4.21, and on 4.25
+properties leave `Children` for `ChildProperties` and become `FField` instead of `UObject`. Set
+`UStructChildProperties` and the reflection walk switches to the FField chain by itself. Compare the 4.19
+values on `season-3` with the 4.25 values on `season-13` to see the shape of a move.
 
 **3. `Source/Runtime/CoreUObject/Public/UObject/CoreUObjectSignatures.h`**
 
@@ -375,8 +430,9 @@ Built by studying the open source Fortnite server projects that came before it:
   `bSessions` options
 - [plooshi/Erbium](https://github.com/plooshi/Erbium) — module layout, signature resolution and the single
   header configuration style
-- [Ducki67/FN-Gameserver-Center](https://github.com/Ducki67/FN-Gameserver-Center) — the Season 3 sources that
-  the byte patterns and match flow were derived from, Raider 3.5 in particular
+- [Ducki67/FN-Gameserver-Center](https://github.com/Ducki67/FN-Gameserver-Center) — the archive the byte
+  patterns and match flow were derived from. Raider 3.5 for Season 3, and Forge and HalalGS 19.10 for how
+  bots and bosses are actually spawned
 
 If you use this project, credit it and the projects above.
 
