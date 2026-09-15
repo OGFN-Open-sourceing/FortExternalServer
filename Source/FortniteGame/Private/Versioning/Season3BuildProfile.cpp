@@ -55,6 +55,13 @@ namespace
 
         Profile.KnownPlaylists = { "Playlist_DefaultSolo", "Playlist_DefaultDuo", "Playlist_DefaultSquad", "Playlist_50v50" };
 
+        Profile.EngineOffsets.ObjectArray = 0x04BA7768;
+        Profile.EngineOffsets.StaticFindObject = 0x014E5890;
+        Profile.EngineOffsets.NameConstructor = 0x01331470;
+        Profile.EngineOffsets.NameToString = 0x013298E0;
+        Profile.EngineOffsets.ProcessEvent = 0x014C04C0;
+        Profile.EngineOffsets.MemoryRealloc = 0x01280550;
+
         Profile.FallbackSpawnLocation = FVector(1250.0f, 1818.0f, 3284.0f);
         Profile.MapRadius = 140000.0f;
         Profile.AircraftAltitude = 12000.0f;
