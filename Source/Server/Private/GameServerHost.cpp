@@ -15,6 +15,8 @@ namespace
     constexpr uint64 PumpWarmupTimeoutMilliseconds = 60000;
     constexpr uint64 AttachTimeoutMilliseconds = 180000;
     constexpr uint64 FrameTickIntervalMilliseconds = 100;
+    constexpr uint64 ImageReadyTimeoutMilliseconds = 120000;
+    constexpr size_t MinimumExecutablePopulationPercent = 98;
 }
 
 FObjectLayout FGameServerHost::MakeObjectLayoutFromProfile()
@@ -128,13 +130,36 @@ bool FGameServerHost::LoadPrimaryModuleImage()
 
     UE_LOG_DISPLAY("Host", "Game module at " + FStringConv::ToHex(PrimaryModule->BaseAddress) + " size " + std::to_string(PrimaryModule->ImageSize));
 
-    if (!ModuleImage.Load(Memory, *PrimaryModule))
+    const uint64 ImageDeadline = FPlatformMisc::GetTimeMilliseconds() + ImageReadyTimeoutMilliseconds;
+
+    while (FPlatformMisc::GetTimeMilliseconds() < ImageDeadline)
     {
-        UE_LOG_ERROR("Host", "Failed to read the game module image");
-        return false;
+        if (!Process.IsAlive())
+        {
+            UE_LOG_ERROR("Host", "The game process exited while its image was being read");
+            return false;
+        }
+
+        Memory.InvalidateCache();
+
+        if (!ModuleImage.Load(Memory, *PrimaryModule))
+        {
+            UE_LOG_ERROR("Host", "Failed to read the game module image");
+            return false;
+        }
+
+        if (ModuleImage.IsExecutableImagePopulated(MinimumExecutablePopulationPercent))
+        {
+            UE_LOG_DISPLAY("Host", "Game module image is fully mapped");
+            return true;
+        }
+
+        UE_LOG_DISPLAY("Host", "Waiting for the game module image to finish mapping");
+        FPlatformMisc::SleepMilliseconds(500);
     }
 
-    return true;
+    UE_LOG_ERROR("Host", "The game module image never became fully readable");
+    return false;
 }
 
 bool FGameServerHost::InitialiseRemoteRuntime()

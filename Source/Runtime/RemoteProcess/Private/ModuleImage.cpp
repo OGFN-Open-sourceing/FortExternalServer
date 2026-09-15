@@ -229,13 +229,32 @@ bool FModuleImage::Load(const FRemoteMemory& Memory, const FRemoteModuleInfo& Mo
     Bytes.resize(ImageSize);
 
     constexpr size_t ChunkSize = 0x100000;
+    constexpr size_t PageSize = 0x1000;
+
+    UnreadableBytes = 0;
+
     for (size_t Offset = 0; Offset < ImageSize; Offset += ChunkSize)
     {
         const size_t Remaining = std::min<size_t>(ChunkSize, ImageSize - Offset);
-        if (!Memory.ReadRaw(BaseAddress + Offset, Bytes.data() + Offset, Remaining))
+        if (Memory.ReadRaw(BaseAddress + Offset, Bytes.data() + Offset, Remaining))
         {
-            std::memset(Bytes.data() + Offset, 0, Remaining);
+            continue;
         }
+
+        for (size_t PageOffset = Offset; PageOffset < Offset + Remaining; PageOffset += PageSize)
+        {
+            const size_t PageBytes = std::min<size_t>(PageSize, Offset + Remaining - PageOffset);
+            if (!Memory.ReadRaw(BaseAddress + PageOffset, Bytes.data() + PageOffset, PageBytes))
+            {
+                std::memset(Bytes.data() + PageOffset, 0, PageBytes);
+                UnreadableBytes += PageBytes;
+            }
+        }
+    }
+
+    if (UnreadableBytes != 0)
+    {
+        UE_LOG_WARNING("RemoteProcess", std::to_string(UnreadableBytes) + " of " + std::to_string(ImageSize) + " image bytes could not be read");
     }
 
     if (ParsePortableExecutable())
@@ -249,6 +268,50 @@ bool FModuleImage::Load(const FRemoteMemory& Memory, const FRemoteModuleInfo& Mo
 bool FModuleImage::IsLoaded() const
 {
     return !Bytes.empty() && !Sections.empty();
+}
+
+size_t FModuleImage::GetUnreadableByteCount() const
+{
+    return UnreadableBytes;
+}
+
+bool FModuleImage::IsExecutableImagePopulated(size_t MinimumPercent) const
+{
+    size_t Total = 0;
+    size_t Populated = 0;
+
+    for (const FImageSection& Section : Sections)
+    {
+        if (!Section.IsExecutable())
+        {
+            continue;
+        }
+
+        const size_t Start = AddressToOffset(Section.VirtualAddress);
+        const size_t End = std::min<size_t>(Start + Section.VirtualSize, Bytes.size());
+
+        for (size_t Offset = Start; Offset < End; Offset += 0x1000)
+        {
+            ++Total;
+
+            const size_t Limit = std::min<size_t>(Offset + 0x1000, End);
+            for (size_t Probe = Offset; Probe < Limit; Probe += 64)
+            {
+                if (Bytes[Probe] != 0)
+                {
+                    ++Populated;
+                    break;
+                }
+            }
+        }
+    }
+
+    if (Total == 0)
+    {
+        return false;
+    }
+
+    return Populated * 100 / Total >= MinimumPercent;
 }
 
 FRemoteAddress FModuleImage::GetBaseAddress() const
