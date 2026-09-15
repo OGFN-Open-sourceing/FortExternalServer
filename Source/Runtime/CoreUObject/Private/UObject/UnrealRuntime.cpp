@@ -184,6 +184,48 @@ void FUnrealRuntime::ApplyOffsetOverrides()
     Apply(Globals.ProcessEvent, OffsetOverrides.ProcessEvent, "ProcessEvent");
     Apply(Globals.MemoryRealloc, OffsetOverrides.MemoryRealloc, "MemoryRealloc");
     Apply(Globals.SpawnActor, OffsetOverrides.SpawnActor, "SpawnActor");
+
+    if (Globals.ObjectArray != InvalidRemoteAddress && Globals.ObjectArray != 0)
+    {
+        const FImageSection* Section = Image->FindSectionContaining(Globals.ObjectArray);
+        if (Section)
+        {
+            UE_LOG_DISPLAY("CoreUObject", "ObjectArray falls in section " + Section->Name + " RVA " + FStringConv::ToHex(Globals.ObjectArray - Image->GetBaseAddress()));
+        }
+        else
+        {
+            UE_LOG_WARNING("CoreUObject", "ObjectArray " + FStringConv::ToHex(Globals.ObjectArray) + " is NOT in any mapped section");
+        }
+
+        uint8 RawBytes[32] = {};
+        GetMemory().ReadRaw(Globals.ObjectArray, RawBytes, sizeof(RawBytes));
+
+        std::string HexDump;
+        for (size_t i = 0; i < sizeof(RawBytes); ++i)
+        {
+            char buf[4];
+            snprintf(buf, sizeof(buf), "%02X ", RawBytes[i]);
+            HexDump += buf;
+            if (i == 7 || i == 15 || i == 23) HexDump += "| ";
+        }
+        UE_LOG_DISPLAY("CoreUObject", "ObjectArray raw bytes: " + HexDump);
+
+        const uint64 ValAtBase = GetMemory().Read<uint64>(Globals.ObjectArray);
+        const uint64 ValAt0C = GetMemory().Read<uint64>(Globals.ObjectArray + 0x0C);
+        const uint64 ValAt14 = GetMemory().Read<uint64>(Globals.ObjectArray + 0x14);
+        UE_LOG_DISPLAY("CoreUObject", "ObjectArray[+0x00]=" + FStringConv::ToHex(ValAtBase) + " [+0x0C]=" + FStringConv::ToHex(ValAt0C) + " [+0x14]=" + FStringConv::ToHex(ValAt14));
+
+        const FRemoteAddress DereferencedObjectArray = GetMemory().ReadPointer(Globals.ObjectArray);
+        if (DereferencedObjectArray != InvalidRemoteAddress && DereferencedObjectArray != 0)
+        {
+            UE_LOG_DISPLAY("CoreUObject", "ObjectArray pointer dereferenced from " + FStringConv::ToHex(Globals.ObjectArray) + " to " + FStringConv::ToHex(DereferencedObjectArray));
+            Globals.ObjectArray = DereferencedObjectArray;
+        }
+        else
+        {
+            UE_LOG_WARNING("CoreUObject", "ObjectArray pointer at " + FStringConv::ToHex(Globals.ObjectArray) + " could not be dereferenced, keeping raw value");
+        }
+    }
 }
 
 void FUnrealRuntime::ReportResolutionFailure(const FSignatureScanner& Scanner) const
