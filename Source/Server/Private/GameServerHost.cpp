@@ -152,6 +152,20 @@ bool FGameServerHost::InitialiseRemoteRuntime()
         return false;
     }
 
+    const FEngineOffsetProfile& ProfileOffsets = GetActiveBuildProfile().EngineOffsets;
+
+    FUnrealGlobals Overrides;
+    Overrides.ObjectArray = ProfileOffsets.ObjectArray;
+    Overrides.StaticFindObject = ProfileOffsets.StaticFindObject;
+    Overrides.StaticLoadObject = ProfileOffsets.StaticLoadObject;
+    Overrides.NameConstructor = ProfileOffsets.NameConstructor;
+    Overrides.NameToString = ProfileOffsets.NameToString;
+    Overrides.ProcessEvent = ProfileOffsets.ProcessEvent;
+    Overrides.MemoryRealloc = ProfileOffsets.MemoryRealloc;
+    Overrides.SpawnActor = ProfileOffsets.SpawnActor;
+
+    UnrealRuntime.SetOffsetOverrides(Overrides);
+
     if (!UnrealRuntime.Initialize(Bridge, ModuleImage, MakeObjectLayoutFromProfile()))
     {
         return false;

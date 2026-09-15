@@ -71,6 +71,18 @@ struct FAssetPathProfile
     std::string ItemEntryStructPath;
 };
 
+struct FEngineOffsetProfile
+{
+    uint32 ObjectArray = 0;
+    uint32 StaticFindObject = 0;
+    uint32 StaticLoadObject = 0;
+    uint32 NameConstructor = 0;
+    uint32 NameToString = 0;
+    uint32 ProcessEvent = 0;
+    uint32 MemoryRealloc = 0;
+    uint32 SpawnActor = 0;
+};
+
 struct FFortBuildProfile
 {
     std::string DisplayName;
@@ -81,6 +93,7 @@ struct FFortBuildProfile
     FObjectLayoutProfile ObjectLayout;
     FAssetPathProfile AssetPaths;
     FAIProfile AI;
+    FEngineOffsetProfile EngineOffsets;
 
     std::vector<std::string> AbilitySets;
     std::vector<FSafeZonePhaseDefinition> SafeZonePhases;

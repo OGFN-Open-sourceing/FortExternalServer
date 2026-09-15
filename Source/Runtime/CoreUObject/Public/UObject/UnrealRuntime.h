@@ -36,6 +36,8 @@ struct FEngineVersionInfo
 class FUnrealRuntime
 {
 public:
+    void SetOffsetOverrides(const FUnrealGlobals& Overrides);
+
     bool Initialize(FGameThreadBridge& InBridge, const FModuleImage& InImage, const FObjectLayout& InLayout);
 
     const FObjectLayout& GetLayout() const;
@@ -119,6 +121,11 @@ private:
     FUnrealGlobals Globals;
     FEngineVersionInfo VersionInfo;
 
+    void ApplyOffsetOverrides();
+
+    void ReportResolutionFailure(const FSignatureScanner& Scanner) const;
+
+    FUnrealGlobals OffsetOverrides;
     FRemoteAddress ScratchArena = InvalidRemoteAddress;
     size_t ScratchArenaSize = 0;
     mutable size_t ScratchCursor = 0;
