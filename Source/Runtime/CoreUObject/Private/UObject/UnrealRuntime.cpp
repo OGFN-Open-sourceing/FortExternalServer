@@ -33,6 +33,11 @@ bool FUnrealGlobals::IsComplete() const
         NameToString != InvalidRemoteAddress && ProcessEvent != InvalidRemoteAddress && MemoryRealloc != InvalidRemoteAddress;
 }
 
+void FUnrealRuntime::SetOffsetOverrides(const FUnrealGlobals& Overrides)
+{
+    OffsetOverrides = Overrides;
+}
+
 bool FUnrealRuntime::Initialize(FGameThreadBridge& InBridge, const FModuleImage& InImage)
 {
     Bridge = &InBridge;
@@ -138,16 +143,86 @@ bool FUnrealRuntime::ResolveGlobals()
     ResolveNameConstructor(Scanner);
     ResolveProcessEvent(Scanner);
 
+    ApplyOffsetOverrides();
+
     if (!Globals.IsComplete())
     {
         UE_LOG_ERROR("CoreUObject", "Failed to resolve every required engine global");
         UE_LOG_ERROR("CoreUObject", "ObjectArray " + FStringConv::ToHex(Globals.ObjectArray) + " StaticFindObject " + FStringConv::ToHex(Globals.StaticFindObject));
         UE_LOG_ERROR("CoreUObject", "NameConstructor " + FStringConv::ToHex(Globals.NameConstructor) + " NameToString " + FStringConv::ToHex(Globals.NameToString));
         UE_LOG_ERROR("CoreUObject", "ProcessEvent " + FStringConv::ToHex(Globals.ProcessEvent) + " Realloc " + FStringConv::ToHex(Globals.MemoryRealloc));
+        ReportResolutionFailure(Scanner);
         return false;
     }
 
     return true;
+}
+
+void FUnrealRuntime::ApplyOffsetOverrides()
+{
+    const auto Apply = [this](FRemoteAddress& Target, FRemoteAddress Override, const char* Label) {
+        if (Override == InvalidRemoteAddress || Override == 0)
+        {
+            return;
+        }
+
+        Target = Image->GetBaseAddress() + Override;
+        UE_LOG_DISPLAY("CoreUObject", std::string(Label) + " taken from the build profile at " + FStringConv::ToHex(Target));
+    };
+
+    Apply(Globals.ObjectArray, OffsetOverrides.ObjectArray, "ObjectArray");
+    Apply(Globals.StaticFindObject, OffsetOverrides.StaticFindObject, "StaticFindObject");
+    Apply(Globals.StaticLoadObject, OffsetOverrides.StaticLoadObject, "StaticLoadObject");
+    Apply(Globals.NameConstructor, OffsetOverrides.NameConstructor, "NameConstructor");
+    Apply(Globals.NameToString, OffsetOverrides.NameToString, "NameToString");
+    Apply(Globals.ProcessEvent, OffsetOverrides.ProcessEvent, "ProcessEvent");
+    Apply(Globals.MemoryRealloc, OffsetOverrides.MemoryRealloc, "MemoryRealloc");
+    Apply(Globals.SpawnActor, OffsetOverrides.SpawnActor, "SpawnActor");
+}
+
+void FUnrealRuntime::ReportResolutionFailure(const FSignatureScanner& Scanner) const
+{
+    UE_LOG_ERROR("CoreUObject", "Image report for " + FStringConv::ToHex(Image->GetBaseAddress()) + " size " + std::to_string(Image->GetImageSize()));
+
+    const std::vector<uint8>& Bytes = Image->GetBytes();
+
+    for (const FImageSection& Section : Image->GetSections())
+    {
+        const size_t Start = Image->AddressToOffset(Section.VirtualAddress);
+        const size_t End = std::min<size_t>(Start + Section.VirtualSize, Bytes.size());
+
+        size_t NonZero = 0;
+        for (size_t Offset = Start; Offset < End; Offset += 64)
+        {
+            if (Bytes[Offset] != 0)
+            {
+                ++NonZero;
+            }
+        }
+
+        const size_t Sampled = End > Start ? (End - Start + 63) / 64 : 0;
+        const size_t Percent = Sampled != 0 ? NonZero * 100 / Sampled : 0;
+
+        UE_LOG_ERROR("CoreUObject", "Section " + Section.Name + " rva " + FStringConv::ToHex(Section.VirtualAddress - Image->GetBaseAddress()) + " size " +
+            std::to_string(Section.VirtualSize) + " executable " + (Section.IsExecutable() ? "yes" : "no") + " populated " + std::to_string(Percent) + "%");
+    }
+
+    const std::vector<std::pair<std::wstring_view, const char*>> Anchors = {
+        { FCoreUObjectSignatures::NameConstructorAnchor, "NameConstructorAnchor" },
+        { FCoreUObjectSignatures::ProcessEventAnchor, "ProcessEventAnchor" },
+        { FCoreUObjectSignatures::StaticLoadObjectAnchor, "StaticLoadObjectAnchor" },
+        { FCoreUObjectSignatures::SpawnActorAnchor, "SpawnActorAnchor" }
+    };
+
+    for (const auto& Anchor : Anchors)
+    {
+        const FRemoteAddress Literal = Scanner.FindWideStringLiteral(Anchor.first);
+        const FRemoteAddress Reference = Literal != InvalidRemoteAddress ? Scanner.FindWideStringReference(Anchor.first) : InvalidRemoteAddress;
+
+        UE_LOG_ERROR("CoreUObject", std::string(Anchor.second) + " literal " + FStringConv::ToHex(Literal) + " reference " + FStringConv::ToHex(Reference));
+    }
+
+    UE_LOG_ERROR("CoreUObject", "Set the EngineOffsets block in the build profile to run this build without a signature scan");
 }
 
 bool FUnrealRuntime::ResolveNameConstructor(const FSignatureScanner& Scanner)
