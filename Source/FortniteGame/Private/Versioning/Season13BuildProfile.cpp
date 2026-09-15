@@ -42,7 +42,7 @@ namespace
         Profile.ObjectLayout.FFieldName = 0x28;
         Profile.ObjectLayout.ObjectItemStride = 0x18;
         Profile.ObjectLayout.bChunkedObjectArray = true;
-        Profile.ObjectLayout.ObjectsPerChunk = 64 * 1024;
+        Profile.ObjectLayout.ObjectsPerChunk = 64 * 1024 / 0x18;
 
         Profile.AssetPaths.MapName = "Apollo_Terrain";
         Profile.AssetPaths.GameModeClassPath = "";

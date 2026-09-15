@@ -31,7 +31,7 @@ struct FObjectLayout
     int32 FField_Name = 0x28;
 
     int32 ObjectItemStride = 0x18;
-    int32 ObjectsPerChunk = 65536;
+    int32 ObjectsPerChunk = 64 * 1024 / 0x18;
     bool bChunkedObjectArray = false;
 
     bool UsesFieldProperties() const
