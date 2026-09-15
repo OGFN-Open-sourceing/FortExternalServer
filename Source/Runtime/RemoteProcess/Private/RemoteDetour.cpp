@@ -8,6 +8,7 @@ namespace
 {
     constexpr size_t RelativeJumpSize = 5;
     constexpr size_t MaximumPrologueSize = 32;
+    constexpr uint32 PatchSuspendAttempts = 64;
 }
 
 bool FRemoteDetour::RelocatePrologue(std::vector<uint8>& PrologueBytes, FRemoteAddress OriginalAddress, FRemoteAddress RelocatedAddress)
@@ -67,9 +68,9 @@ bool FRemoteDetour::RelocatePrologue(std::vector<uint8>& PrologueBytes, FRemoteA
     return true;
 }
 
-bool FRemoteDetour::Install(const FRemoteMemory& Memory, FRemoteAllocation& Arena, FRemoteAddress TargetFunction, FRemoteAddress DetourFunction)
+bool FRemoteDetour::Prepare(const FRemoteMemory& Memory, FRemoteAllocation& Arena, FRemoteAddress TargetFunction)
 {
-    if (IsInstalled() || TargetFunction == InvalidRemoteAddress || DetourFunction == InvalidRemoteAddress)
+    if (IsInstalled() || IsPrepared() || TargetFunction == InvalidRemoteAddress)
     {
         return false;
     }
@@ -119,32 +120,62 @@ bool FRemoteDetour::Install(const FRemoteMemory& Memory, FRemoteAllocation& Aren
         return false;
     }
 
-    std::vector<uint8> PatchBytes(PrologueLength, 0x90);
-    const int64 Displacement = static_cast<int64>(DetourFunction) - static_cast<int64>(TargetFunction + RelativeJumpSize);
+    Memory.FlushInstructionCacheRange(Trampoline, TrampolineBytes.size());
+
+    TrampolineAddress = Trampoline;
+    PreparedTarget = TargetFunction;
+    PreparedPrologueLength = PrologueLength;
+    OriginalBytes = std::move(Prologue);
+
+    return true;
+}
+
+bool FRemoteDetour::Activate(const FRemoteMemory& Memory, FRemoteAddress DetourFunction)
+{
+    if (IsInstalled() || !IsPrepared() || DetourFunction == InvalidRemoteAddress)
+    {
+        return false;
+    }
+
+    std::vector<uint8> PatchBytes(PreparedPrologueLength, 0x90);
+    const int64 Displacement = static_cast<int64>(DetourFunction) - static_cast<int64>(PreparedTarget + RelativeJumpSize);
 
     if (Displacement < INT32_MIN || Displacement > INT32_MAX)
     {
-        UE_LOG_ERROR("RemoteDetour", "Detour target is out of relative branch range for " + FStringConv::ToHex(TargetFunction));
+        UE_LOG_ERROR("RemoteDetour", "Detour target is out of relative branch range for " + FStringConv::ToHex(PreparedTarget));
         return false;
     }
 
     FX64Emitter::WriteRelativeJump(PatchBytes.data(), static_cast<int32>(Displacement));
 
-    if (!Memory.WriteRaw(TargetFunction, PatchBytes.data(), PatchBytes.size()))
+    FProcessAttachment* const Process = const_cast<FProcessAttachment*>(Memory.GetProcess());
+    const bool bSuspended = Process != nullptr && Process->SuspendOtherThreads(PreparedTarget, PreparedPrologueLength, PatchSuspendAttempts);
+
+    const bool bPatched = Memory.WriteRaw(PreparedTarget, PatchBytes.data(), PatchBytes.size());
+    Memory.FlushInstructionCacheRange(PreparedTarget, PatchBytes.size());
+
+    if (bSuspended)
     {
-        UE_LOG_ERROR("RemoteDetour", "Failed to patch entry point at " + FStringConv::ToHex(TargetFunction));
+        Process->ResumeSuspendedThreads();
+    }
+
+    if (!bPatched)
+    {
+        UE_LOG_ERROR("RemoteDetour", "Failed to patch entry point at " + FStringConv::ToHex(PreparedTarget));
         return false;
     }
 
-    Memory.FlushInstructionCacheRange(TargetFunction, PatchBytes.size());
-    Memory.FlushInstructionCacheRange(Trampoline, TrampolineBytes.size());
+    TargetAddress = PreparedTarget;
+    PreparedTarget = InvalidRemoteAddress;
+    PreparedPrologueLength = 0;
 
-    TargetAddress = TargetFunction;
-    TrampolineAddress = Trampoline;
-    OriginalBytes = std::move(Prologue);
-
-    UE_LOG_VERBOSE("RemoteDetour", "Hooked " + FStringConv::ToHex(TargetFunction) + " with trampoline at " + FStringConv::ToHex(Trampoline));
+    UE_LOG_VERBOSE("RemoteDetour", "Hooked " + FStringConv::ToHex(TargetAddress) + " with trampoline at " + FStringConv::ToHex(TrampolineAddress));
     return true;
+}
+
+bool FRemoteDetour::Install(const FRemoteMemory& Memory, FRemoteAllocation& Arena, FRemoteAddress TargetFunction, FRemoteAddress DetourFunction)
+{
+    return Prepare(Memory, Arena, TargetFunction) && Activate(Memory, DetourFunction);
 }
 
 bool FRemoteDetour::Uninstall(const FRemoteMemory& Memory)
@@ -159,9 +190,16 @@ bool FRemoteDetour::Uninstall(const FRemoteMemory& Memory)
 
     TargetAddress = InvalidRemoteAddress;
     TrampolineAddress = InvalidRemoteAddress;
+    PreparedTarget = InvalidRemoteAddress;
+    PreparedPrologueLength = 0;
     OriginalBytes.clear();
 
     return bRestored;
+}
+
+bool FRemoteDetour::IsPrepared() const
+{
+    return PreparedTarget != InvalidRemoteAddress;
 }
 
 bool FRemoteDetour::IsInstalled() const

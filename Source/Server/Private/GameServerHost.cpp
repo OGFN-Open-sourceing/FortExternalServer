@@ -267,6 +267,8 @@ bool FGameServerHost::WaitForAthenaWorld()
 
 void FGameServerHost::OnGameThreadTick()
 {
+    UnrealRuntime.ReleaseTransientAllocations();
+
     if (Stage == EHostStage::RunningMatch)
     {
         Match.Tick();

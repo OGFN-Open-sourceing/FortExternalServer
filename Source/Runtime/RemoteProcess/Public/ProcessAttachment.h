@@ -31,6 +31,10 @@ public:
 
     bool ResumeMainThread();
 
+    bool SuspendOtherThreads(FRemoteAddress GuardedRangeStart, size_t GuardedRangeSize, uint32 MaximumAttempts);
+
+    void ResumeSuspendedThreads();
+
     void Terminate();
 
     uint32 GetProcessId() const;
@@ -53,4 +57,5 @@ private:
     uint32 ProcessId = 0;
     std::wstring PrimaryModuleName;
     std::vector<FRemoteModuleInfo> Modules;
+    std::vector<void*> SuspendedThreads;
 };

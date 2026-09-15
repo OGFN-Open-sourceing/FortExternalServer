@@ -7,9 +7,15 @@
 class FRemoteDetour
 {
 public:
+    bool Prepare(const FRemoteMemory& Memory, FRemoteAllocation& Arena, FRemoteAddress TargetFunction);
+
+    bool Activate(const FRemoteMemory& Memory, FRemoteAddress DetourFunction);
+
     bool Install(const FRemoteMemory& Memory, FRemoteAllocation& Arena, FRemoteAddress TargetFunction, FRemoteAddress DetourFunction);
 
     bool Uninstall(const FRemoteMemory& Memory);
+
+    bool IsPrepared() const;
 
     bool IsInstalled() const;
 
@@ -22,5 +28,7 @@ private:
 
     FRemoteAddress TargetAddress = InvalidRemoteAddress;
     FRemoteAddress TrampolineAddress = InvalidRemoteAddress;
+    FRemoteAddress PreparedTarget = InvalidRemoteAddress;
+    uint32 PreparedPrologueLength = 0;
     std::vector<uint8> OriginalBytes;
 };

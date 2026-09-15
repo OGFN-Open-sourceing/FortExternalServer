@@ -94,6 +94,8 @@ bool FProcessAttachment::AttachToRunning(const std::wstring& ProcessImageName, u
 
 void FProcessAttachment::Detach()
 {
+    ResumeSuspendedThreads();
+
     if (MainThreadHandle != nullptr)
     {
         ::CloseHandle(MainThreadHandle);
@@ -230,6 +232,108 @@ const FRemoteModuleInfo* FProcessAttachment::FindModule(std::wstring_view Module
 const FRemoteModuleInfo* FProcessAttachment::GetPrimaryModule() const
 {
     return FindModule(PrimaryModuleName);
+}
+
+bool FProcessAttachment::SuspendOtherThreads(FRemoteAddress GuardedRangeStart, size_t GuardedRangeSize, uint32 MaximumAttempts)
+{
+    if (!IsAttached())
+    {
+        return false;
+    }
+
+    ResumeSuspendedThreads();
+
+    for (uint32 Attempt = 0; Attempt < MaximumAttempts; ++Attempt)
+    {
+        const HANDLE Snapshot = ::CreateToolhelp32Snapshot(TH32CS_SNAPTHREAD, 0);
+        if (Snapshot == INVALID_HANDLE_VALUE)
+        {
+            return false;
+        }
+
+        THREADENTRY32 Entry = {};
+        Entry.dwSize = sizeof(Entry);
+
+        if (::Thread32First(Snapshot, &Entry) != FALSE)
+        {
+            do
+            {
+                if (Entry.dwSize < FIELD_OFFSET(THREADENTRY32, th32OwnerProcessID) + sizeof(Entry.th32OwnerProcessID))
+                {
+                    continue;
+                }
+
+                if (Entry.th32OwnerProcessID != ProcessId)
+                {
+                    continue;
+                }
+
+                const HANDLE Thread = ::OpenThread(THREAD_SUSPEND_RESUME | THREAD_GET_CONTEXT | THREAD_QUERY_INFORMATION, FALSE, Entry.th32ThreadID);
+                if (Thread == nullptr)
+                {
+                    continue;
+                }
+
+                if (::SuspendThread(Thread) == static_cast<DWORD>(-1))
+                {
+                    ::CloseHandle(Thread);
+                    continue;
+                }
+
+                SuspendedThreads.push_back(Thread);
+            }
+            while (::Thread32Next(Snapshot, &Entry) != FALSE);
+        }
+
+        ::CloseHandle(Snapshot);
+
+        if (SuspendedThreads.empty())
+        {
+            return false;
+        }
+
+        bool bThreadInsideRange = false;
+
+        for (void* const ThreadHandle : SuspendedThreads)
+        {
+            CONTEXT ThreadContext = {};
+            ThreadContext.ContextFlags = CONTEXT_CONTROL;
+
+            if (::GetThreadContext(static_cast<HANDLE>(ThreadHandle), &ThreadContext) == FALSE)
+            {
+                continue;
+            }
+
+            const FRemoteAddress InstructionPointer = static_cast<FRemoteAddress>(ThreadContext.Rip);
+            if (InstructionPointer >= GuardedRangeStart && InstructionPointer < GuardedRangeStart + GuardedRangeSize)
+            {
+                bThreadInsideRange = true;
+                break;
+            }
+        }
+
+        if (!bThreadInsideRange)
+        {
+            return true;
+        }
+
+        ResumeSuspendedThreads();
+        ::Sleep(1);
+    }
+
+    UE_LOG_WARNING("Process", "A game thread kept executing inside the range at " + FStringConv::ToHex(GuardedRangeStart));
+    return false;
+}
+
+void FProcessAttachment::ResumeSuspendedThreads()
+{
+    for (void* const ThreadHandle : SuspendedThreads)
+    {
+        ::ResumeThread(static_cast<HANDLE>(ThreadHandle));
+        ::CloseHandle(static_cast<HANDLE>(ThreadHandle));
+    }
+
+    SuspendedThreads.clear();
 }
 
 uint32 FProcessAttachment::FindProcessIdByImageName(std::wstring_view ImageName)

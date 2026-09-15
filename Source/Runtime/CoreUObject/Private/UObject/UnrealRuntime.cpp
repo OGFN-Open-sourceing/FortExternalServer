@@ -331,11 +331,16 @@ FObjectHandle FUnrealRuntime::MakeHandle(FRemoteAddress Address) const
 
 FRemoteAddress FUnrealRuntime::AcquireScratch(size_t Size) const
 {
-    const size_t AlignedCursor = AlignUp<size_t>(ScratchCursor, 16);
+    if (ScratchArena == InvalidRemoteAddress || Size == 0 || Size > ScratchArenaSize)
+    {
+        UE_LOG_ERROR("Runtime", "Scratch request of " + std::to_string(Size) + " bytes cannot be served");
+        return InvalidRemoteAddress;
+    }
+
+    size_t AlignedCursor = AlignUp<size_t>(ScratchCursor, 16);
     if (AlignedCursor + Size > ScratchArenaSize)
     {
-        ScratchCursor = 0;
-        return ScratchArena;
+        AlignedCursor = 0;
     }
 
     ScratchCursor = AlignedCursor + Size;
@@ -343,7 +348,10 @@ FRemoteAddress FUnrealRuntime::AcquireScratch(size_t Size) const
     const FRemoteAddress Address = ScratchArena + AlignedCursor;
 
     const std::vector<uint8> ZeroFill(Size, 0);
-    GetMemory().WriteRaw(Address, ZeroFill.data(), ZeroFill.size());
+    if (!GetMemory().WriteRaw(Address, ZeroFill.data(), ZeroFill.size()))
+    {
+        return InvalidRemoteAddress;
+    }
 
     return Address;
 }

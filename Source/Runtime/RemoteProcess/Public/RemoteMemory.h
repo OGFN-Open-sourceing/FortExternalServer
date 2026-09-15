@@ -15,6 +15,8 @@ public:
 
     bool IsValid() const;
 
+    const FProcessAttachment* GetProcess() const;
+
     bool ReadRaw(FRemoteAddress Address, void* Destination, size_t Size) const;
 
     bool WriteRaw(FRemoteAddress Address, const void* Source, size_t Size) const;
