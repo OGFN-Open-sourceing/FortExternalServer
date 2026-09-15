@@ -8,7 +8,7 @@ namespace
 
         Profile.DisplayName = "Fortnite 3.6 Chapter 1 Season 3";
         Profile.FortniteVersion = 3.6;
-        Profile.EngineVersion = 4.19;
+        Profile.EngineVersion = 4.20;
         Profile.Changelist = 4019403;
 
         Profile.ObjectLayout.UObjectSize = 0x28;
@@ -26,7 +26,8 @@ namespace
         Profile.ObjectLayout.UPropertyOffsetInternal = 0x44;
         Profile.ObjectLayout.UBoolPropertyFieldMask = 0x73;
         Profile.ObjectLayout.ObjectItemStride = 0x18;
-        Profile.ObjectLayout.bChunkedObjectArray = false;
+        Profile.ObjectLayout.bChunkedObjectArray = true;
+        Profile.ObjectLayout.ObjectsPerChunk = 64 * 1024 / 0x18;
 
         Profile.AssetPaths.MapName = "Athena_Terrain";
         Profile.AssetPaths.GameModeClassPath = "/Game/Athena/Athena_GameMode.Athena_GameMode_C";

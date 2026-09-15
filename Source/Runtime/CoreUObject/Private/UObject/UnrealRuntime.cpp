@@ -38,6 +38,12 @@ void FUnrealRuntime::SetOffsetOverrides(const FUnrealGlobals& Overrides)
     OffsetOverrides = Overrides;
 }
 
+void FUnrealRuntime::SetObjectArrayLayout(bool bChunked, int32 InObjectsPerChunk)
+{
+    bChunkedObjectArray = bChunked;
+    ObjectsPerChunk = InObjectsPerChunk > 0 ? InObjectsPerChunk : FUnrealLayout::FChunkedObjectArray_ChunkBytes / FUnrealLayout::FUObjectItem_Stride;
+}
+
 bool FUnrealRuntime::Initialize(FGameThreadBridge& InBridge, const FModuleImage& InImage)
 {
     Bridge = &InBridge;
@@ -383,7 +389,8 @@ FRemoteAddress FUnrealRuntime::GetObjectItemArray() const
 
 int32 FUnrealRuntime::GetObjectCount() const
 {
-    return GetMemory().Read<int32>(Globals.ObjectArray + FUnrealLayout::TUObjectArray_NumElements);
+    const int32 CountOffset = bChunkedObjectArray ? FUnrealLayout::FChunkedObjectArray_NumElements : FUnrealLayout::TUObjectArray_NumElements;
+    return GetMemory().Read<int32>(Globals.ObjectArray + CountOffset);
 }
 
 FObjectHandle FUnrealRuntime::GetObjectByIndex(int32 Index) const
@@ -394,7 +401,27 @@ FObjectHandle FUnrealRuntime::GetObjectByIndex(int32 Index) const
     }
 
     const FRemoteAddress ItemArray = GetObjectItemArray();
-    const FRemoteAddress ItemAddress = ItemArray + static_cast<uint64>(Index) * FUnrealLayout::FUObjectItem_Stride;
+    if (ItemArray == 0 || ItemArray == InvalidRemoteAddress)
+    {
+        return FObjectHandle();
+    }
+
+    FRemoteAddress ItemAddress = InvalidRemoteAddress;
+
+    if (bChunkedObjectArray)
+    {
+        const FRemoteAddress Chunk = GetMemory().ReadCachedPointer(ItemArray + static_cast<uint64>(Index / ObjectsPerChunk) * sizeof(FRemoteAddress));
+        if (Chunk == 0 || Chunk == InvalidRemoteAddress)
+        {
+            return FObjectHandle();
+        }
+
+        ItemAddress = Chunk + static_cast<uint64>(Index % ObjectsPerChunk) * FUnrealLayout::FUObjectItem_Stride;
+    }
+    else
+    {
+        ItemAddress = ItemArray + static_cast<uint64>(Index) * FUnrealLayout::FUObjectItem_Stride;
+    }
 
     return MakeHandle(GetMemory().ReadCachedPointer(ItemAddress + FUnrealLayout::FUObjectItem_Object));
 }

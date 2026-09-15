@@ -20,6 +20,7 @@ struct FObjectLayoutProfile
     int32 UBoolPropertyFieldMask = 0x73;
     int32 ObjectItemStride = 0x18;
     bool bChunkedObjectArray = false;
+    int32 ObjectsPerChunk = 0;
 };
 
 struct FAssetPathProfile

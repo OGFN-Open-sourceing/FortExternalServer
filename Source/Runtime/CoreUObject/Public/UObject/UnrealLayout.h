@@ -51,6 +51,14 @@ namespace FUnrealLayout
     inline constexpr int32 TUObjectArray_MaxElements = 0x08;
     inline constexpr int32 TUObjectArray_NumElements = 0x0C;
 
+    inline constexpr int32 FChunkedObjectArray_Objects = 0x00;
+    inline constexpr int32 FChunkedObjectArray_PreAllocated = 0x08;
+    inline constexpr int32 FChunkedObjectArray_MaxElements = 0x10;
+    inline constexpr int32 FChunkedObjectArray_NumElements = 0x14;
+    inline constexpr int32 FChunkedObjectArray_MaxChunks = 0x18;
+    inline constexpr int32 FChunkedObjectArray_NumChunks = 0x1C;
+    inline constexpr int32 FChunkedObjectArray_ChunkBytes = 64 * 1024;
+
     inline constexpr int32 FScriptArray_Data = 0x00;
     inline constexpr int32 FScriptArray_ArrayNum = 0x08;
     inline constexpr int32 FScriptArray_ArrayMax = 0x0C;

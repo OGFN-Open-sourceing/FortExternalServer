@@ -163,6 +163,7 @@ bool FGameServerHost::InitialiseRemoteRuntime()
     Overrides.SpawnActor = ProfileOffsets.SpawnActor;
 
     UnrealRuntime.SetOffsetOverrides(Overrides);
+    UnrealRuntime.SetObjectArrayLayout(GetActiveBuildProfile().ObjectLayout.bChunkedObjectArray, GetActiveBuildProfile().ObjectLayout.ObjectsPerChunk);
 
     if (!UnrealRuntime.Initialize(Bridge, ModuleImage))
     {

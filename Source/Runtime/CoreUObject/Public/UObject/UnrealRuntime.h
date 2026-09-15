@@ -38,6 +38,8 @@ class FUnrealRuntime
 public:
     void SetOffsetOverrides(const FUnrealGlobals& Overrides);
 
+    void SetObjectArrayLayout(bool bChunked, int32 InObjectsPerChunk);
+
     bool Initialize(FGameThreadBridge& InBridge, const FModuleImage& InImage);
 
     bool IsInitialized() const;
@@ -119,6 +121,8 @@ private:
     void ReportResolutionFailure(const FSignatureScanner& Scanner) const;
 
     FUnrealGlobals OffsetOverrides;
+    bool bChunkedObjectArray = false;
+    int32 ObjectsPerChunk = 0;
     FRemoteAddress ScratchArena = InvalidRemoteAddress;
     size_t ScratchArenaSize = 0;
     mutable size_t ScratchCursor = 0;
