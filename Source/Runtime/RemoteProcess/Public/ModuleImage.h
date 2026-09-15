@@ -22,6 +22,10 @@ public:
 
     bool IsLoaded() const;
 
+    size_t GetUnreadableByteCount() const;
+
+    bool IsExecutableImagePopulated(size_t MinimumPercent) const;
+
     FRemoteAddress GetBaseAddress() const;
 
     uint32 GetImageSize() const;
@@ -45,6 +49,7 @@ public:
 private:
     FRemoteAddress BaseAddress = InvalidRemoteAddress;
     uint32 ImageSize = 0;
+    size_t UnreadableBytes = 0;
     std::vector<uint8> Bytes;
     std::vector<FImageSection> Sections;
 };
