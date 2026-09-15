@@ -18,6 +18,11 @@ bool FRemoteMemory::IsValid() const
     return Process != nullptr && Process->IsAttached();
 }
 
+const FProcessAttachment* FRemoteMemory::GetProcess() const
+{
+    return Process;
+}
+
 bool FRemoteMemory::ReadRaw(FRemoteAddress Address, void* Destination, size_t Size) const
 {
     if (!IsValid() || Address == InvalidRemoteAddress || Destination == nullptr || Size == 0)

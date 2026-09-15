@@ -11,6 +11,7 @@ struct FProcessAttachment::FPlatformState
 {
     HANDLE ProcessHandle = nullptr;
     HANDLE MainThreadHandle = nullptr;
+    std::vector<HANDLE> SuspendedThreads;
 };
 
 namespace
@@ -136,6 +137,8 @@ bool FProcessAttachment::AttachToRunning(const std::wstring& ProcessImageName, u
 
 void FProcessAttachment::Detach()
 {
+    ResumeSuspendedThreads();
+
     if (Platform != nullptr)
     {
         if (Platform->MainThreadHandle != nullptr)
@@ -175,6 +178,113 @@ bool FProcessAttachment::IsAlive() const
     }
 
     return ExitCode == STILL_ACTIVE;
+}
+
+bool FProcessAttachment::SuspendOtherThreads(FRemoteAddress GuardedRangeStart, size_t GuardedRangeSize, uint32 MaximumAttempts)
+{
+    if (!IsAttached())
+    {
+        return false;
+    }
+
+    ResumeSuspendedThreads();
+
+    for (uint32 Attempt = 0; Attempt < MaximumAttempts; ++Attempt)
+    {
+        const HANDLE Snapshot = ::CreateToolhelp32Snapshot(TH32CS_SNAPTHREAD, 0);
+        if (Snapshot == INVALID_HANDLE_VALUE)
+        {
+            return false;
+        }
+
+        THREADENTRY32 Entry = {};
+        Entry.dwSize = sizeof(Entry);
+
+        if (::Thread32First(Snapshot, &Entry) != FALSE)
+        {
+            do
+            {
+                if (Entry.dwSize < FIELD_OFFSET(THREADENTRY32, th32OwnerProcessID) + sizeof(Entry.th32OwnerProcessID))
+                {
+                    continue;
+                }
+
+                if (Entry.th32OwnerProcessID != ProcessId)
+                {
+                    continue;
+                }
+
+                const HANDLE Thread = ::OpenThread(THREAD_SUSPEND_RESUME | THREAD_GET_CONTEXT | THREAD_QUERY_INFORMATION, FALSE, Entry.th32ThreadID);
+                if (Thread == nullptr)
+                {
+                    continue;
+                }
+
+                if (::SuspendThread(Thread) == static_cast<DWORD>(-1))
+                {
+                    ::CloseHandle(Thread);
+                    continue;
+                }
+
+                Platform->SuspendedThreads.push_back(Thread);
+            }
+            while (::Thread32Next(Snapshot, &Entry) != FALSE);
+        }
+
+        ::CloseHandle(Snapshot);
+
+        if (Platform->SuspendedThreads.empty())
+        {
+            return false;
+        }
+
+        bool bThreadInsideRange = false;
+
+        for (const HANDLE Thread : Platform->SuspendedThreads)
+        {
+            CONTEXT ThreadContext = {};
+            ThreadContext.ContextFlags = CONTEXT_CONTROL;
+
+            if (::GetThreadContext(Thread, &ThreadContext) == FALSE)
+            {
+                continue;
+            }
+
+            const FRemoteAddress InstructionPointer = static_cast<FRemoteAddress>(ThreadContext.Rip);
+            if (InstructionPointer >= GuardedRangeStart && InstructionPointer < GuardedRangeStart + GuardedRangeSize)
+            {
+                bThreadInsideRange = true;
+                break;
+            }
+        }
+
+        if (!bThreadInsideRange)
+        {
+            return true;
+        }
+
+        ResumeSuspendedThreads();
+        ::Sleep(1);
+    }
+
+    UE_LOG_WARNING("Process", "A game thread kept executing inside the range at " + FStringConv::ToHex(GuardedRangeStart));
+    return false;
+}
+
+void FProcessAttachment::ResumeSuspendedThreads()
+{
+    if (Platform == nullptr)
+    {
+        return;
+    }
+
+    for (const HANDLE Thread : Platform->SuspendedThreads)
+    {
+        ::ResumeThread(Thread);
+        ::CloseHandle(Thread);
+    }
+
+    Platform->SuspendedThreads.clear();
 }
 
 void FProcessAttachment::Terminate()

@@ -327,15 +327,14 @@ int32 FGameThreadBridge::InstallHook(FRemoteAddress TargetFunction, EHookDispatc
 
     FHookRegistration& Registration = Hooks[static_cast<size_t>(ChannelIndex)];
 
-    if (!Registration.Detour.Install(*Memory, *Arena, TargetFunction, StubAddress))
+    if (!Registration.Detour.Prepare(*Memory, *Arena, TargetFunction))
     {
-        UE_LOG_ERROR("Bridge", "Failed to detour " + FStringConv::ToHex(TargetFunction));
+        UE_LOG_ERROR("Bridge", "Failed to prepare a detour for " + FStringConv::ToHex(TargetFunction));
         return InvalidIndex;
     }
 
     if (!EmitHookStub(ChannelIndex, Mode, StubAddress, Registration.Detour.GetTrampolineAddress()))
     {
-        Registration.Detour.Uninstall(*Memory);
         return InvalidIndex;
     }
 
@@ -346,6 +345,12 @@ int32 FGameThreadBridge::InstallHook(FRemoteAddress TargetFunction, EHookDispatc
     Memory->Write<uint64>(ChannelAddress + FBridgeLayout::ChannelAckSequence, 0);
     Memory->Write<uint64>(ChannelAddress + FBridgeLayout::ChannelVerdict, 0);
     Memory->Write<uint64>(ChannelAddress + FBridgeLayout::ChannelEnabled, 1);
+
+    if (!Registration.Detour.Activate(*Memory, StubAddress))
+    {
+        UE_LOG_ERROR("Bridge", "Failed to detour " + FStringConv::ToHex(TargetFunction));
+        return InvalidIndex;
+    }
 
     Registration.bActive = true;
     Registration.Mode = Mode;

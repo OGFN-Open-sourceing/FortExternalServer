@@ -48,6 +48,10 @@ public:
 
     bool IsAlive() const;
 
+    bool SuspendOtherThreads(FRemoteAddress GuardedRangeStart, size_t GuardedRangeSize, uint32 MaximumAttempts);
+
+    void ResumeSuspendedThreads();
+
     void Terminate();
 
     uint32 GetProcessId() const;

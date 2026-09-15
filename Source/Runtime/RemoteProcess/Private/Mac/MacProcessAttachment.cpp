@@ -21,6 +21,7 @@ struct FProcessAttachment::FPlatformState
     mach_port_t Task = MACH_PORT_NULL;
     pid_t Pid = 0;
     bool bLaunchedByServer = false;
+    std::vector<thread_act_t> SuspendedThreads;
 };
 
 namespace
@@ -180,6 +181,8 @@ bool FProcessAttachment::AttachToRunning(const std::wstring& ProcessImageName, u
 
 void FProcessAttachment::Detach()
 {
+    ResumeSuspendedThreads();
+
     if (Platform != nullptr)
     {
         if (Platform->Task != MACH_PORT_NULL)
@@ -208,6 +211,93 @@ bool FProcessAttachment::IsAlive() const
     }
 
     return ::kill(Platform->Pid, 0) == 0;
+}
+
+bool FProcessAttachment::SuspendOtherThreads(FRemoteAddress GuardedRangeStart, size_t GuardedRangeSize, uint32 MaximumAttempts)
+{
+    if (!IsAttached())
+    {
+        return false;
+    }
+
+    ResumeSuspendedThreads();
+
+    for (uint32 Attempt = 0; Attempt < MaximumAttempts; ++Attempt)
+    {
+        thread_act_array_t Threads = nullptr;
+        mach_msg_type_number_t ThreadCount = 0;
+
+        if (::task_threads(Platform->Task, &Threads, &ThreadCount) != KERN_SUCCESS)
+        {
+            return false;
+        }
+
+        for (mach_msg_type_number_t Index = 0; Index < ThreadCount; ++Index)
+        {
+            if (::thread_suspend(Threads[Index]) == KERN_SUCCESS)
+            {
+                Platform->SuspendedThreads.push_back(Threads[Index]);
+            }
+            else
+            {
+                ::mach_port_deallocate(::mach_task_self(), Threads[Index]);
+            }
+        }
+
+        ::mach_vm_deallocate(::mach_task_self(), reinterpret_cast<mach_vm_address_t>(Threads), ThreadCount * sizeof(thread_act_t));
+
+        if (Platform->SuspendedThreads.empty())
+        {
+            return false;
+        }
+
+        bool bThreadInsideRange = false;
+
+        for (const thread_act_t Thread : Platform->SuspendedThreads)
+        {
+            x86_thread_state64_t ThreadState = {};
+            mach_msg_type_number_t StateCount = x86_THREAD_STATE64_COUNT;
+
+            if (::thread_get_state(Thread, x86_THREAD_STATE64, reinterpret_cast<thread_state_t>(&ThreadState), &StateCount) != KERN_SUCCESS)
+            {
+                continue;
+            }
+
+            const FRemoteAddress InstructionPointer = static_cast<FRemoteAddress>(ThreadState.__rip);
+            if (InstructionPointer >= GuardedRangeStart && InstructionPointer < GuardedRangeStart + GuardedRangeSize)
+            {
+                bThreadInsideRange = true;
+                break;
+            }
+        }
+
+        if (!bThreadInsideRange)
+        {
+            return true;
+        }
+
+        ResumeSuspendedThreads();
+        ::usleep(1000);
+    }
+
+    UE_LOG_WARNING("Process", "A game thread kept executing inside the range at " + FStringConv::ToHex(GuardedRangeStart));
+    return false;
+}
+
+void FProcessAttachment::ResumeSuspendedThreads()
+{
+    if (Platform == nullptr)
+    {
+        return;
+    }
+
+    for (const thread_act_t Thread : Platform->SuspendedThreads)
+    {
+        ::thread_resume(Thread);
+        ::mach_port_deallocate(::mach_task_self(), Thread);
+    }
+
+    Platform->SuspendedThreads.clear();
 }
 
 void FProcessAttachment::Terminate()
