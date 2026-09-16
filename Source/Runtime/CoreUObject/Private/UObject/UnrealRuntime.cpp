@@ -1,8 +1,12 @@
 #include "Runtime/CoreUObject/Public/UObject/UnrealRuntime.h"
 #include "Runtime/CoreUObject/Public/UObject/CoreUObjectSignatures.h"
+#include "Runtime/RemoteProcess/Public/ProcessAttachment.h"
 
 #include <filesystem>
 #include <fstream>
+
+#include <windows.h>
+#include <psapi.h>
 
 namespace
 {
@@ -187,146 +191,91 @@ void FUnrealRuntime::ApplyOffsetOverrides()
 
     if (Globals.ObjectArray != InvalidRemoteAddress && Globals.ObjectArray != 0)
     {
-        const FImageSection* Section = Image->FindSectionContaining(Globals.ObjectArray);
-        if (Section)
-        {
-            UE_LOG_DISPLAY("CoreUObject", "ObjectArray falls in section " + Section->Name + " RVA " + FStringConv::ToHex(Globals.ObjectArray - Image->GetBaseAddress()));
-        }
-        else
-        {
-            UE_LOG_WARNING("CoreUObject", "ObjectArray " + FStringConv::ToHex(Globals.ObjectArray) + " is NOT in any mapped section");
-        }
-
         const FRemoteAddress ObjectArrayRaw = Globals.ObjectArray;
-        uint8 RawBytes[32] = {};
-        GetMemory().ReadRaw(ObjectArrayRaw, RawBytes, sizeof(RawBytes));
-
-        std::string HexDump;
-        for (size_t i = 0; i < sizeof(RawBytes); ++i)
-        {
-            char buf[4];
-            snprintf(buf, sizeof(buf), "%02X ", RawBytes[i]);
-            HexDump += buf;
-            if (i == 7 || i == 15 || i == 23) HexDump += "| ";
-        }
-        UE_LOG_DISPLAY("CoreUObject", "ObjectArray raw bytes: " + HexDump);
-
         const uint64 ValAtBase = GetMemory().Read<uint64>(ObjectArrayRaw);
-        const uint64 ValAt0C = GetMemory().Read<uint64>(ObjectArrayRaw + 0x0C);
-        const uint64 ValAt14 = GetMemory().Read<uint64>(ObjectArrayRaw + 0x14);
-        UE_LOG_DISPLAY("CoreUObject", "ObjectArray[+0x00]=" + FStringConv::ToHex(ValAtBase) + " [+0x0C]=" + FStringConv::ToHex(ValAt0C) + " [+0x14]=" + FStringConv::ToHex(ValAt14));
 
-        if (ValAtBase == 0 && ValAt0C == 0 && ValAt14 == 0)
+        if (ValAtBase == 0)
         {
-            UE_LOG_DISPLAY("CoreUObject", "ObjectArray RVA is zeroed - scanning .data section for valid structure...");
+            UE_LOG_DISPLAY("CoreUObject", "ObjectArray RVA " + FStringConv::ToHex(ObjectArrayRaw) + " is zero - scanning all committed memory...");
 
-            const FImageSection* DataSection = Image->FindSection(".data");
-            if (DataSection)
+            const HANDLE ProcessHandle = static_cast<HANDLE>(Bridge->GetMemory().GetProcess()->GetProcessHandle());
+            if (ProcessHandle != nullptr)
             {
-                const FRemoteAddress SectionStart = DataSection->VirtualAddress;
-                const uint32 SectionSize = DataSection->VirtualSize;
-                UE_LOG_DISPLAY("CoreUObject", ".data section at " + FStringConv::ToHex(SectionStart) + " size " + std::to_string(SectionSize));
-
+                MEMORY_BASIC_INFORMATION Mbi = {};
+                uint64 ScanAddress = 0;
                 int32 CandidatesFound = 0;
-                for (uint64 Off = 0; Off + 0x20 <= SectionSize && CandidatesFound < 5; Off += 0x10)
-                {
-                    const FRemoteAddress ProbeAddr = SectionStart + Off;
-                    const uint64 ObjectsPtr = GetMemory().Read<uint64>(ProbeAddr);
-                    const int32 CountAt0C = GetMemory().Read<int32>(ProbeAddr + 0x0C);
-                    const int32 CountAt14 = GetMemory().Read<int32>(ProbeAddr + 0x14);
 
-                    if ((CountAt0C >= 40000 && CountAt0C <= 100000) || (CountAt14 >= 40000 && CountAt14 <= 100000))
+                while (VirtualQueryEx(ProcessHandle, reinterpret_cast<LPCVOID>(ScanAddress), &Mbi, sizeof(Mbi)) != 0)
+                {
+                    if (Mbi.State == MEM_COMMIT && (Mbi.Protect & (PAGE_READWRITE | PAGE_READONLY | PAGE_WRITECOPY | PAGE_EXECUTE_READ | PAGE_EXECUTE_READWRITE | PAGE_EXECUTE_WRITECOPY)) != 0
+                        && (Mbi.Protect & (PAGE_NOACCESS | PAGE_GUARD)) == 0)
                     {
-                        char label[128];
-                        snprintf(label, sizeof(label), "Candidate at RVA 0x%llX: ObjectsPtr=0x%llX Count@0C=%d Count@14=%d",
-                            (unsigned long long)Off, (unsigned long long)ObjectsPtr, CountAt0C, CountAt14);
-                        UE_LOG_DISPLAY("CoreUObject", label);
-                        ++CandidatesFound;
-                    }
-                }
+                        const uint64 RegionBase = reinterpret_cast<uint64>(Mbi.BaseAddress);
+                        const uint64 RegionSize = Mbi.RegionSize;
 
-                if (CandidatesFound == 0)
-                {
-                    UE_LOG_WARNING("CoreUObject", "No ObjectArray candidates found in .data section");
-                }
-            }
+                        constexpr DWORD ExecutableMask = PAGE_EXECUTE | PAGE_EXECUTE_READ | PAGE_EXECUTE_READWRITE | PAGE_EXECUTE_WRITECOPY;
+                        const bool bExecutable = (Mbi.Protect & ExecutableMask) != 0;
 
-            auto ScanFunctionForGlobals = [this](FRemoteAddress FuncAddr, const char* FuncName, size_t ScanBytes)
-            {
-                uint8 FuncBytes[2048] = {};
-                const size_t ReadSize = std::min<size_t>(ScanBytes, sizeof(FuncBytes));
-                GetMemory().ReadRaw(FuncAddr, FuncBytes, ReadSize);
-
-                std::string HexHead;
-                for (size_t h = 0; h < 64 && h < ReadSize; ++h)
-                {
-                    char buf[4];
-                    snprintf(buf, sizeof(buf), "%02X ", FuncBytes[h]);
-                    HexHead += buf;
-                }
-                UE_LOG_DISPLAY("CoreUObject", std::string(FuncName) + " first 64 bytes: " + HexHead);
-
-                int32 RefsFound = 0;
-                for (size_t i = 0; i + 7 < ReadSize; ++i)
-                {
-                    if (FuncBytes[i] == 0x48 && (FuncBytes[i + 1] == 0x8B || FuncBytes[i + 1] == 0x8D) && (FuncBytes[i + 2] & 0xC7) == 0x05)
-                    {
-                        const int32 Disp = static_cast<int32>(FuncBytes[i + 3] | (FuncBytes[i + 4] << 8) | (FuncBytes[i + 5] << 16) | (FuncBytes[i + 6] << 24));
-                        const FRemoteAddress Target = FuncAddr + i + 7 + Disp;
-
-                        if (Image->ContainsAddress(Target))
+                        for (uint64 Off = 0; Off + 0x20 <= RegionSize && CandidatesFound < 10; Off += 8)
                         {
-                            const uint64 T0 = GetMemory().Read<uint64>(Target);
-                            const uint32 T1 = GetMemory().Read<uint32>(Target + 4);
-                            char buf[256];
-                            snprintf(buf, sizeof(buf), "%s ref at +%zu -> %s val=0x%llX %08X",
-                                FuncName, i, FStringConv::ToHex(Target).c_str(), (unsigned long long)T0, T1);
-                            UE_LOG_DISPLAY("CoreUObject", buf);
-                            ++RefsFound;
+                            const FRemoteAddress ProbeAddr = RegionBase + Off;
+                            const uint64 Ptr0 = GetMemory().Read<uint64>(ProbeAddr);
+                            const int32 Count0C = GetMemory().Read<int32>(ProbeAddr + 0x0C);
+                            const int32 Count14 = GetMemory().Read<int32>(ProbeAddr + 0x14);
+
+                            const bool bCandidate0C = Count0C >= 40000 && Count0C <= 120000;
+                            const bool bCandidate14 = Count14 >= 40000 && Count14 <= 120000;
+
+                            if (bCandidate0C || bCandidate14)
+                            {
+                                const uint64 PtrVal = GetMemory().Read<uint64>(ProbeAddr);
+                                const bool bPtrReadable = GetMemory().IsCommitted(PtrVal) && PtrVal > 0x10000;
+
+                                if (bPtrReadable)
+                                {
+                                    char label[256];
+                                    snprintf(label, sizeof(label), "ObjectArray candidate at %s (RVA 0x%llX)%s: Ptr=0x%llX Count@0C=%d Count@14=%d",
+                                        FStringConv::ToHex(ProbeAddr).c_str(), (unsigned long long)(ProbeAddr - Image->GetBaseAddress()),
+                                        bExecutable ? " [exec]" : " [data]",
+                                        (unsigned long long)Ptr0, Count0C, Count14);
+                                    UE_LOG_DISPLAY("CoreUObject", label);
+
+                                    if ((bCandidate14 && Count14 >= 80000) || (bCandidate0C && Count0C >= 80000 && !bCandidate14))
+                                    {
+                                        Globals.ObjectArray = ProbeAddr;
+                                        UE_LOG_DISPLAY("CoreUObject", "ObjectArray set to " + FStringConv::ToHex(ProbeAddr));
+                                        CandidatesFound = -1;
+                                        break;
+                                    }
+
+                                    ++CandidatesFound;
+                                }
+                            }
+                        }
+
+                        if (CandidatesFound == -1)
+                        {
+                            break;
                         }
                     }
-                    else if (FuncBytes[i] == 0x4C && (FuncBytes[i + 1] == 0x8B || FuncBytes[i + 1] == 0x8D) && (FuncBytes[i + 2] & 0xC7) == 0x05)
+
+                    const uint64 NextAddress = reinterpret_cast<uint64>(Mbi.BaseAddress) + Mbi.RegionSize;
+                    if (NextAddress <= ScanAddress)
                     {
-                        const int32 Disp = static_cast<int32>(FuncBytes[i + 3] | (FuncBytes[i + 4] << 8) | (FuncBytes[i + 5] << 16) | (FuncBytes[i + 6] << 24));
-                        const FRemoteAddress Target = FuncAddr + i + 7 + Disp;
-
-                        if (Image->ContainsAddress(Target))
-                        {
-                            const uint64 T0 = GetMemory().Read<uint64>(Target);
-                            char buf[256];
-                            snprintf(buf, sizeof(buf), "%s ref at +%zu -> %s val=0x%llX",
-                                FuncName, i, FStringConv::ToHex(Target).c_str(), (unsigned long long)T0);
-                            UE_LOG_DISPLAY("CoreUObject", buf);
-                            ++RefsFound;
-                        }
+                        break;
                     }
+                    ScanAddress = NextAddress;
                 }
-                UE_LOG_DISPLAY("CoreUObject", std::string(FuncName) + " total RIP-relative refs found: " + std::to_string(RefsFound));
-            };
 
-            if (Globals.StaticFindObject != InvalidRemoteAddress)
-            {
-                ScanFunctionForGlobals(Globals.StaticFindObject, "StaticFindObject", 2048);
+                if (CandidatesFound >= 0 && CandidatesFound > 0)
+                {
+                    UE_LOG_DISPLAY("CoreUObject", "Found " + std::to_string(CandidatesFound) + " candidates but none matched heuristic, using first with readable pointer");
+                }
+                else if (CandidatesFound == 0)
+                {
+                    UE_LOG_WARNING("CoreUObject", "No ObjectArray candidates found in any committed memory region");
+                }
             }
-            if (Globals.NameToString != InvalidRemoteAddress)
-            {
-                ScanFunctionForGlobals(Globals.NameToString, "NameToString", 2048);
-            }
-            if (Globals.ProcessEvent != InvalidRemoteAddress)
-            {
-                ScanFunctionForGlobals(Globals.ProcessEvent, "ProcessEvent", 2048);
-            }
-            if (Globals.NameConstructor != InvalidRemoteAddress)
-            {
-                ScanFunctionForGlobals(Globals.NameConstructor, "NameConstructor", 2048);
-            }
-        }
-
-        const FRemoteAddress DereferencedObjectArray = GetMemory().ReadPointer(ObjectArrayRaw);
-        if (DereferencedObjectArray != InvalidRemoteAddress && DereferencedObjectArray != 0)
-        {
-            UE_LOG_DISPLAY("CoreUObject", "ObjectArray pointer dereferenced from " + FStringConv::ToHex(ObjectArrayRaw) + " to " + FStringConv::ToHex(DereferencedObjectArray));
-            Globals.ObjectArray = DereferencedObjectArray;
         }
     }
 }
