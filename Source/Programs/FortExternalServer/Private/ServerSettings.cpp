@@ -9,7 +9,9 @@ namespace
     constexpr std::wstring_view LogFileRelativePath = L"Saved/Logs/FortExternalServer.log";
 
     constexpr std::string_view LaunchArguments =
-        "-AUTH_LOGIN=unused -AUTH_PASSWORD=unused -AUTH_TYPE=epic -epicapp=Fortnite -epicenv=Prod -epiclocale=en-us -epicportal -skippatchcheck -nobe -fromfl=eac -fltoken=3db3ba5dcbd2e16703f3978d -nosplash";
+        "-AUTH_LOGIN=unused -AUTH_PASSWORD=unused -AUTH_TYPE=epic -epicapp=Fortnite -epicenv=Prod -epiclocale=en-us -epicportal -skippatchcheck -nobe -fromfl=eac -fltoken=3db3ba5dcbd2e16703f3978d -nosplash -http=wininet";
+
+    constexpr std::string_view HeadlessArguments = " -nullrhi -nosound -unattended";
 
     std::vector<std::string> SplitLoadout(std::string_view Value)
     {
@@ -53,6 +55,7 @@ void FServerSettings::LogResolvedConfiguration() const
     UE_LOG_DISPLAY("Config", "Port " + std::to_string(GetPort()) + ", MaxTickRate " + std::to_string(GetMaxTickRate()));
     UE_LOG_DISPLAY("Config", "MaxPlayers " + std::to_string(Match.MaxPlayers) + ", MinimumPlayers " + std::to_string(Match.MinimumPlayersToStart));
     UE_LOG_DISPLAY("Config", "bSkipVersionCheck " + DescribeBool(FConfiguration::bSkipVersionCheck));
+    UE_LOG_DISPLAY("Config", "bHeadless " + DescribeBool(FConfiguration::bHeadless));
 
     for (const std::string& Entry : Match.StartingLoadout)
     {
@@ -78,6 +81,11 @@ int32 FServerSettings::GetMaxTickRate() const
 bool FServerSettings::ShouldAttachToRunningProcess() const
 {
     return FConfiguration::bAttachToRunningProcess;
+}
+
+bool FServerSettings::IsHeadless() const
+{
+    return FConfiguration::bHeadless;
 }
 
 bool FServerSettings::ShouldEnforceVersionMatch() const
@@ -120,5 +128,5 @@ std::wstring FServerSettings::GetGameExecutableName() const
 
 std::string FServerSettings::BuildLaunchArguments() const
 {
-    return std::string(LaunchArguments) + " -port=" + std::to_string(GetPort());
+    return std::string(LaunchArguments) + (IsHeadless() ? std::string(HeadlessArguments) : std::string()) + " -port=" + std::to_string(GetPort());
 }

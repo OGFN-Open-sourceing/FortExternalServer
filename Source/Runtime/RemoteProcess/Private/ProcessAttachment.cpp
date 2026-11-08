@@ -7,7 +7,7 @@ FProcessAttachment::~FProcessAttachment()
     Detach();
 }
 
-bool FProcessAttachment::LaunchAndAttach(const std::wstring& ExecutablePath, const std::wstring& CommandLine, const std::wstring& WorkingDirectory, bool bStartSuspended)
+bool FProcessAttachment::LaunchAndAttach(const std::wstring& ExecutablePath, const std::wstring& CommandLine, const std::wstring& WorkingDirectory, bool bStartSuspended, bool bHidden)
 {
     Detach();
 
@@ -27,6 +27,8 @@ bool FProcessAttachment::LaunchAndAttach(const std::wstring& ExecutablePath, con
 
     STARTUPINFOW StartupInfo = {};
     StartupInfo.cb = sizeof(StartupInfo);
+    StartupInfo.dwFlags = bHidden ? STARTF_USESHOWWINDOW : 0u;
+    StartupInfo.wShowWindow = bHidden ? SW_HIDE : SW_SHOWDEFAULT;
 
     PROCESS_INFORMATION ProcessInformation = {};
 

@@ -105,7 +105,7 @@ bool FGameServerHost::AttachToGameProcess()
 
     GameLogMirror.Start(FGameLogMirror::GetDefaultLogFilePath(), true);
 
-    if (!Process.LaunchAndAttach(ExecutablePath, Arguments, WorkingDirectory, false))
+    if (!Process.LaunchAndAttach(ExecutablePath, Arguments, WorkingDirectory, false, Settings.IsHeadless()))
     {
         return false;
     }

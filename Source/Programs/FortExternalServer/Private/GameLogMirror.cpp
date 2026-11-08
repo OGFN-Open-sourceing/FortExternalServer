@@ -5,6 +5,7 @@ namespace
 {
     constexpr uint32 PollIntervalMilliseconds = 50;
     constexpr size_t ReadChunkBytes = 64 * 1024;
+    constexpr DWORD HeaderBytes = 64;
     constexpr std::string_view Utf8ByteOrderMark = "\xEF\xBB\xBF";
 
     HANDLE OpenSharedForRead(const std::wstring& Path)
@@ -61,7 +62,7 @@ std::wstring FGameLogMirror::GetDefaultLogFilePath()
     return std::wstring(LocalAppData) + L"/FortniteGame/Saved/Logs/FortniteGame.log";
 }
 
-bool FGameLogMirror::ReadFileIdentity(const std::wstring& Path, FFileIdentity& OutIdentity)
+bool FGameLogMirror::ReadFileState(const std::wstring& Path, FFileState& OutState)
 {
     const HANDLE File = OpenSharedForRead(Path);
     if (File == INVALID_HANDLE_VALUE)
@@ -70,7 +71,9 @@ bool FGameLogMirror::ReadFileIdentity(const std::wstring& Path, FFileIdentity& O
     }
 
     BY_HANDLE_FILE_INFORMATION Information = {};
-    const bool bRead = ::GetFileInformationByHandle(File, &Information) != FALSE;
+    char Header[HeaderBytes] = {};
+    DWORD HeaderRead = 0;
+    const bool bRead = ::GetFileInformationByHandle(File, &Information) != FALSE && ::ReadFile(File, Header, HeaderBytes, &HeaderRead, nullptr) != FALSE;
     ::CloseHandle(File);
 
     if (!bRead)
@@ -78,8 +81,10 @@ bool FGameLogMirror::ReadFileIdentity(const std::wstring& Path, FFileIdentity& O
         return false;
     }
 
-    OutIdentity.VolumeSerialNumber = Information.dwVolumeSerialNumber;
-    OutIdentity.FileIndex = (static_cast<uint64>(Information.nFileIndexHigh) << 32) | Information.nFileIndexLow;
+    OutState.VolumeSerialNumber = Information.dwVolumeSerialNumber;
+    OutState.FileIndex = (static_cast<uint64>(Information.nFileIndexHigh) << 32) | Information.nFileIndexLow;
+    OutState.Size = (static_cast<uint64>(Information.nFileSizeHigh) << 32) | Information.nFileSizeLow;
+    OutState.Header.assign(Header, HeaderRead);
     return true;
 }
 
@@ -93,7 +98,7 @@ void FGameLogMirror::Start(const std::wstring& InLogFilePath, bool bSkipExisting
     }
 
     LogFilePath = InLogFilePath;
-    bHasStaleIdentity = bSkipExistingFile && ReadFileIdentity(LogFilePath, StaleIdentity);
+    bHasSkippedState = bSkipExistingFile && ReadFileState(LogFilePath, SkippedState);
     bRunning = true;
     Worker = std::thread(&FGameLogMirror::Run, this);
 }
@@ -110,24 +115,24 @@ void FGameLogMirror::Stop()
 
 void FGameLogMirror::Run()
 {
-    FFileIdentity CurrentIdentity;
-    bool bHasCurrent = false;
-    uint64 Offset = 0;
+    FFileState CurrentState = SkippedState;
+    bool bHasCurrent = bHasSkippedState;
+    uint64 Offset = bHasSkippedState ? SkippedState.Size : 0;
     std::string Pending;
     std::vector<char> Buffer(ReadChunkBytes);
 
     while (bRunning)
     {
-        FFileIdentity Identity;
-        if (!ReadFileIdentity(LogFilePath, Identity) || (bHasStaleIdentity && Identity == StaleIdentity))
+        FFileState State;
+        if (!ReadFileState(LogFilePath, State))
         {
             ::Sleep(PollIntervalMilliseconds);
             continue;
         }
 
-        if (!bHasCurrent || !(Identity == CurrentIdentity))
+        if (!bHasCurrent || !State.IsSameLog(CurrentState) || State.Size < Offset)
         {
-            CurrentIdentity = Identity;
+            CurrentState = State;
             bHasCurrent = true;
             Offset = 0;
             Pending.clear();

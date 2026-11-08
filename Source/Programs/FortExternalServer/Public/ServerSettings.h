@@ -17,6 +17,8 @@ public:
 
     bool ShouldAttachToRunningProcess() const;
 
+    bool IsHeadless() const;
+
     bool ShouldEnforceVersionMatch() const;
 
     bool AreConsoleCommandsEnabled() const;

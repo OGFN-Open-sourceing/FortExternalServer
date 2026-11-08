@@ -12,6 +12,7 @@ struct FConfiguration
     static inline auto MinimumPlayers = 1;
     static inline auto bAttachToRunningProcess = false;
     static inline auto bSkipVersionCheck = false;
+    static inline auto bHeadless = true;
     static inline constexpr auto bEnableConsole = true;
     static inline constexpr auto bVerboseLogs = false;
 };

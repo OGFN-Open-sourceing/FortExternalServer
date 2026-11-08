@@ -19,7 +19,7 @@ public:
     FProcessAttachment(const FProcessAttachment&) = delete;
     FProcessAttachment& operator=(const FProcessAttachment&) = delete;
 
-    bool LaunchAndAttach(const std::wstring& ExecutablePath, const std::wstring& CommandLine, const std::wstring& WorkingDirectory, bool bStartSuspended);
+    bool LaunchAndAttach(const std::wstring& ExecutablePath, const std::wstring& CommandLine, const std::wstring& WorkingDirectory, bool bStartSuspended, bool bHidden);
 
     bool AttachToRunning(const std::wstring& ProcessImageName, uint32 TimeoutMilliseconds);
 
