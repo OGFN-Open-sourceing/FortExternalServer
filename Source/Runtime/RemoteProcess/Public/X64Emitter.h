@@ -129,6 +129,8 @@ private:
 
     void EmitRexForRegisterMemory(EX64Register Register, EX64Register Base);
 
+    void EmitRexForXmmMemory(uint8 XmmIndex, EX64Register Base);
+
     void EmitModRmWithDisplacement(EX64Register Register, EX64Register Base, int32 Displacement);
 
     std::vector<uint8> Bytes;

@@ -9,7 +9,7 @@ namespace
     constexpr std::wstring_view LogFileRelativePath = L"Saved/Logs/FortExternalServer.log";
 
     constexpr std::string_view LaunchArguments =
-        "-AUTH_LOGIN=unused -AUTH_PASSWORD=unused -AUTH_TYPE=epic -epicapp=Fortnite -epicenv=Prod -epiclocale=en-us -epicportal -nosplash -log";
+        "-AUTH_LOGIN=unused -AUTH_PASSWORD=unused -AUTH_TYPE=epic -epicapp=Fortnite -epicenv=Prod -epiclocale=en-us -epicportal -skippatchcheck -nobe -fromfl=eac -fltoken=3db3ba5dcbd2e16703f3978d -nosplash -log";
 
     std::vector<std::string> SplitLoadout(std::string_view Value)
     {

@@ -137,6 +137,25 @@ void FX64Emitter::EmitRexForRegisterMemory(EX64Register Register, EX64Register B
     EmitU8(Rex);
 }
 
+void FX64Emitter::EmitRexForXmmMemory(uint8 XmmIndex, EX64Register Base)
+{
+    uint8 Rex = 0x40;
+    if (XmmIndex >= 8)
+    {
+        Rex |= 0x4;
+    }
+
+    if (RegisterNeedsExtension(Base))
+    {
+        Rex |= 0x1;
+    }
+
+    if (Rex != 0x40)
+    {
+        EmitU8(Rex);
+    }
+}
+
 void FX64Emitter::EmitModRmWithDisplacement(EX64Register Register, EX64Register Base, int32 Displacement)
 {
     const uint8 BaseIndex = RegisterIndex(Base);
@@ -253,25 +272,31 @@ void FX64Emitter::CompareRegisterRegister(EX64Register Left, EX64Register Right)
 
 void FX64Emitter::SaveXmmToMemory(uint8 XmmIndex, EX64Register Base, int32 Displacement)
 {
+    EmitRexForXmmMemory(XmmIndex, Base);
     EmitBytes({ 0x0F, 0x11 });
     EmitModRmWithDisplacement(static_cast<EX64Register>(XmmIndex), Base, Displacement);
 }
 
 void FX64Emitter::LoadXmmFromMemory(uint8 XmmIndex, EX64Register Base, int32 Displacement)
 {
+    EmitRexForXmmMemory(XmmIndex, Base);
     EmitBytes({ 0x0F, 0x10 });
     EmitModRmWithDisplacement(static_cast<EX64Register>(XmmIndex), Base, Displacement);
 }
 
 void FX64Emitter::LoadXmmQwordFromMemory(uint8 XmmIndex, EX64Register Base, int32 Displacement)
 {
-    EmitBytes({ 0xF3, 0x0F, 0x7E });
+    EmitU8(0xF3);
+    EmitRexForXmmMemory(XmmIndex, Base);
+    EmitBytes({ 0x0F, 0x7E });
     EmitModRmWithDisplacement(static_cast<EX64Register>(XmmIndex), Base, Displacement);
 }
 
 void FX64Emitter::StoreXmmQwordToMemory(EX64Register Base, int32 Displacement, uint8 XmmIndex)
 {
-    EmitBytes({ 0x66, 0x0F, 0xD6 });
+    EmitU8(0x66);
+    EmitRexForXmmMemory(XmmIndex, Base);
+    EmitBytes({ 0x0F, 0xD6 });
     EmitModRmWithDisplacement(static_cast<EX64Register>(XmmIndex), Base, Displacement);
 }
 

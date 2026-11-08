@@ -261,8 +261,13 @@ bool FGameServerHost::InstallHooks()
     }
 
     UE_LOG_DISPLAY("Host", "Game thread pump is live");
-    FWindowsPlatform::SleepMilliseconds(90000);
-    UE_LOG_DISPLAY("Host", "Experiment idle window over");
+    for (int32 Tick = 0; Tick < 900 && Process.IsAlive(); ++Tick)
+    {
+        FWindowsPlatform::SleepMilliseconds(100);
+    }
+    DWORD ExperimentExitCode = 0;
+    ::GetExitCodeProcess(static_cast<HANDLE>(Process.GetProcessHandle()), &ExperimentExitCode);
+    UE_LOG_DISPLAY("Host", "Experiment idle window over, exit code " + FStringConv::ToHex(ExperimentExitCode) + " seq " + std::to_string(Bridge.GetPumpSequence()));
 
     return true;
 }
