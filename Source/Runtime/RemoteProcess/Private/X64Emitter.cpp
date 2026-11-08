@@ -300,6 +300,25 @@ void FX64Emitter::IncrementMemory(EX64Register Base, int32 Displacement)
     EmitModRmWithDisplacement(EX64Register::Rax, Base, Displacement);
 }
 
+void FX64Emitter::DecrementMemory(EX64Register Base, int32 Displacement)
+{
+    EmitRexForRegisterMemory(EX64Register::Rax, Base);
+    EmitU8(0xFF);
+    EmitModRmWithDisplacement(EX64Register::Rcx, Base, Displacement);
+}
+
+void FX64Emitter::LoadCurrentThreadId(EX64Register Destination)
+{
+    constexpr uint32 TebClientIdUniqueThread = 0x48;
+
+    EmitU8(0x65);
+    EmitU8(static_cast<uint8>(0x48 | (RegisterNeedsExtension(Destination) ? 0x4 : 0x0)));
+    EmitU8(0x8B);
+    EmitU8(static_cast<uint8>(0x04 | (RegisterIndex(Destination) << 3)));
+    EmitU8(0x25);
+    EmitU32(TebClientIdUniqueThread);
+}
+
 void FX64Emitter::CallRegister(EX64Register Register)
 {
     if (RegisterNeedsExtension(Register))

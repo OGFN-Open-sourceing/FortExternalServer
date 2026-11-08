@@ -1,6 +1,6 @@
 #pragma once
 
-#include "FortniteGame/Public/Gameplay/FortAthenaTypes.h"
+#include "FortniteGame/Public/FortTypes.h"
 
 struct FObjectLayoutProfile
 {
@@ -27,30 +27,46 @@ struct FAssetPathProfile
 {
     std::string MapName;
     std::string GameModeClassPath;
-    std::string PlayerPawnClassPath;
-    std::string PlayerPawnFallbackClass;
-    std::string WarmupPlayerStartClass;
-    std::string AircraftClass;
+    std::string DefaultPlaylistPath;
     std::string DefaultHeadPart;
     std::string DefaultBodyPart;
     std::string DefaultPickaxe;
+    std::string EditTool;
     std::string WoodResource;
     std::string StoneResource;
     std::string MetalResource;
     std::string ItemListStructPath;
     std::string ItemEntryStructPath;
+    std::vector<std::string> BuildingItems;
+    std::vector<std::string> AbilitySets;
 };
 
 struct FEngineOffsetProfile
 {
-    uint32 ObjectArray = 0;
+    uint32 GObjects = 0;
+    uint32 AppendString = 0;
+    uint32 GWorld = 0;
+    uint32 ProcessEvent = 0;
+    int32 ProcessEventIdx = InvalidIndex;
+    uint32 Realloc = 0;
     uint32 StaticFindObject = 0;
     uint32 StaticLoadObject = 0;
-    uint32 NameConstructor = 0;
-    uint32 NameToString = 0;
-    uint32 ProcessEvent = 0;
-    uint32 MemoryRealloc = 0;
-    uint32 SpawnActor = 0;
+    uint32 FNameConstructor = 0;
+};
+
+struct FEngineFunctionProfile
+{
+    uint32 NetDriverTickFlush = 0;
+    uint32 CollectGarbage = 0;
+    uint32 AbilitySystemGiveAbility = 0;
+    uint32 AbilitySystemInternalTryActivateAbility = 0;
+    uint32 GameplayAbilitySpecConstructor = 0;
+};
+
+struct FNetworkLayoutProfile
+{
+    int32 NetDriverReplicationDriver = InvalidIndex;
+    int32 ServerReplicateActorsVirtualIndex = InvalidIndex;
 };
 
 struct FFortBuildProfile
@@ -63,25 +79,8 @@ struct FFortBuildProfile
     FObjectLayoutProfile ObjectLayout;
     FAssetPathProfile AssetPaths;
     FEngineOffsetProfile EngineOffsets;
-
-    std::vector<std::string> AbilitySets;
-    std::vector<FSafeZonePhaseDefinition> SafeZonePhases;
-    std::vector<std::string> KnownPlaylists;
-
-    FVector FallbackSpawnLocation = FVector();
-    float MapRadius = 0.0f;
-    float AircraftAltitude = 0.0f;
-    float SkydiveDropHeight = 0.0f;
-
-    float AircraftFlightSeconds = 45.0f;
-    float SafeZoneStartDelaySeconds = 30.0f;
-    float EndOfMatchDelaySeconds = 15.0f;
-
-    float StartingHealth = 100.0f;
-    float StartingShield = 0.0f;
-    float MaxHealth = 100.0f;
-    float MaxShield = 100.0f;
-    int32 BackpackSize = 5;
+    FEngineFunctionProfile EngineFunctions;
+    FNetworkLayoutProfile NetworkLayout;
 
     std::string ResolvePlaylistPath(std::string_view Identifier) const;
 

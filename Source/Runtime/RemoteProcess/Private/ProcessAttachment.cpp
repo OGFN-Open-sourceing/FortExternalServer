@@ -44,6 +44,7 @@ bool FProcessAttachment::LaunchAndAttach(const std::wstring& ExecutablePath, con
     ProcessHandle = ProcessInformation.hProcess;
     MainThreadHandle = ProcessInformation.hThread;
     ProcessId = ProcessInformation.dwProcessId;
+    MainThreadId = ProcessInformation.dwThreadId;
 
     const size_t Separator = ExecutablePath.find_last_of(L'\\');
     PrimaryModuleName = Separator == std::wstring::npos ? ExecutablePath : ExecutablePath.substr(Separator + 1);
@@ -86,6 +87,7 @@ bool FProcessAttachment::AttachToRunning(const std::wstring& ProcessImageName, u
     }
 
     ProcessId = FoundProcessId;
+    MainThreadId = FindOldestThreadId(FoundProcessId);
     PrimaryModuleName = ProcessImageName;
 
     UE_LOG_DISPLAY("RemoteProcess", "Attached to " + FStringConv::ToNarrow(ProcessImageName) + " with process id " + std::to_string(ProcessId));
@@ -109,6 +111,7 @@ void FProcessAttachment::Detach()
     }
 
     ProcessId = 0;
+    MainThreadId = 0;
     Modules.clear();
 }
 
@@ -154,6 +157,60 @@ void FProcessAttachment::Terminate()
 uint32 FProcessAttachment::GetProcessId() const
 {
     return ProcessId;
+}
+
+uint32 FProcessAttachment::GetMainThreadId() const
+{
+    return MainThreadId;
+}
+
+uint32 FProcessAttachment::FindOldestThreadId(uint32 OwnerProcessId)
+{
+    const HANDLE Snapshot = ::CreateToolhelp32Snapshot(TH32CS_SNAPTHREAD, 0);
+    if (Snapshot == INVALID_HANDLE_VALUE)
+    {
+        return 0;
+    }
+
+    THREADENTRY32 Entry = {};
+    Entry.dwSize = sizeof(Entry);
+
+    uint32 OldestThreadId = 0;
+    uint64 OldestCreationTime = ~0ull;
+
+    for (BOOL bHasEntry = ::Thread32First(Snapshot, &Entry); bHasEntry != FALSE; bHasEntry = ::Thread32Next(Snapshot, &Entry))
+    {
+        if (Entry.th32OwnerProcessID != OwnerProcessId)
+        {
+            continue;
+        }
+
+        const HANDLE Thread = ::OpenThread(THREAD_QUERY_LIMITED_INFORMATION, FALSE, Entry.th32ThreadID);
+        if (Thread == nullptr)
+        {
+            continue;
+        }
+
+        FILETIME CreationTime = {};
+        FILETIME ExitTime = {};
+        FILETIME KernelTime = {};
+        FILETIME UserTime = {};
+
+        if (::GetThreadTimes(Thread, &CreationTime, &ExitTime, &KernelTime, &UserTime) != FALSE)
+        {
+            const uint64 Created = (static_cast<uint64>(CreationTime.dwHighDateTime) << 32) | CreationTime.dwLowDateTime;
+            if (Created < OldestCreationTime)
+            {
+                OldestCreationTime = Created;
+                OldestThreadId = Entry.th32ThreadID;
+            }
+        }
+
+        ::CloseHandle(Thread);
+    }
+
+    ::CloseHandle(Snapshot);
+    return OldestThreadId;
 }
 
 void* FProcessAttachment::GetProcessHandle() const

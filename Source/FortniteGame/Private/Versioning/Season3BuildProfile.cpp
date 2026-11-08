@@ -26,56 +26,46 @@ namespace
         Profile.ObjectLayout.UPropertyOffsetInternal = 0x44;
         Profile.ObjectLayout.UBoolPropertyFieldMask = 0x73;
         Profile.ObjectLayout.ObjectItemStride = 0x18;
-        Profile.ObjectLayout.bChunkedObjectArray = true;
-        Profile.ObjectLayout.ObjectsPerChunk = 64 * 1024 / 0x18;
+        Profile.ObjectLayout.bChunkedObjectArray = false;
+        Profile.ObjectLayout.ObjectsPerChunk = 0;
 
         Profile.AssetPaths.MapName = "Athena_Terrain";
         Profile.AssetPaths.GameModeClassPath = "/Game/Athena/Athena_GameMode.Athena_GameMode_C";
-        Profile.AssetPaths.PlayerPawnClassPath = "Class /Game/Athena/PlayerPawn_Athena.PlayerPawn_Athena_C";
-        Profile.AssetPaths.PlayerPawnFallbackClass = "FortniteGame.FortPlayerPawnAthena";
-        Profile.AssetPaths.WarmupPlayerStartClass = "FortPlayerStartWarmup";
-        Profile.AssetPaths.AircraftClass = "FortAthenaAircraft";
-        Profile.AssetPaths.DefaultHeadPart = "CustomCharacterPart F_Med_Head1.F_Med_Head1";
-        Profile.AssetPaths.DefaultBodyPart = "CustomCharacterPart F_Med_Soldier_01.F_Med_Soldier_01";
-        Profile.AssetPaths.DefaultPickaxe = "WID_Harvest_Pickaxe_Athena_C_T01";
-        Profile.AssetPaths.WoodResource = "AthenaWoodItemDefinition WoodItemData.WoodItemData";
-        Profile.AssetPaths.StoneResource = "AthenaStoneItemDefinition StoneItemData.StoneItemData";
-        Profile.AssetPaths.MetalResource = "AthenaMetalItemDefinition MetalItemData.MetalItemData";
-        Profile.AssetPaths.ItemListStructPath = "ScriptStruct FortniteGame.FortItemList";
-        Profile.AssetPaths.ItemEntryStructPath = "ScriptStruct FortniteGame.FortItemEntry";
+        Profile.AssetPaths.DefaultPlaylistPath = "/Game/Athena/Playlists/Playlist_DefaultSolo.Playlist_DefaultSolo";
+        Profile.AssetPaths.DefaultHeadPart = "/Game/Characters/CharacterParts/Female/Medium/Heads/F_Med_Head1.F_Med_Head1";
+        Profile.AssetPaths.DefaultBodyPart = "/Game/Characters/CharacterParts/Female/Medium/Bodies/F_Med_Soldier_01.F_Med_Soldier_01";
+        Profile.AssetPaths.DefaultPickaxe = "/Game/Athena/Items/Weapons/WID_Harvest_Pickaxe_Athena_C_T01.WID_Harvest_Pickaxe_Athena_C_T01";
+        Profile.AssetPaths.EditTool = "/Game/Items/Weapons/BuildingTools/EditTool.EditTool";
+        Profile.AssetPaths.WoodResource = "/Game/Items/ResourcePickups/WoodItemData.WoodItemData";
+        Profile.AssetPaths.StoneResource = "/Game/Items/ResourcePickups/StoneItemData.StoneItemData";
+        Profile.AssetPaths.MetalResource = "/Game/Items/ResourcePickups/MetalItemData.MetalItemData";
+        Profile.AssetPaths.ItemListStructPath = "/Script/FortniteGame.FortItemList";
+        Profile.AssetPaths.ItemEntryStructPath = "/Script/FortniteGame.FortItemEntry";
+        Profile.AssetPaths.BuildingItems = { "/Game/Items/Weapons/BuildingTools/BuildingItemData_Wall.BuildingItemData_Wall",
+            "/Game/Items/Weapons/BuildingTools/BuildingItemData_Floor.BuildingItemData_Floor",
+            "/Game/Items/Weapons/BuildingTools/BuildingItemData_Stair_W.BuildingItemData_Stair_W",
+            "/Game/Items/Weapons/BuildingTools/BuildingItemData_RoofS.BuildingItemData_RoofS" };
+        Profile.AssetPaths.AbilitySets = { "/Game/Abilities/Player/Generic/Traits/DefaultPlayer/GAS_AthenaPlayer.GAS_AthenaPlayer",
+            "/Game/Abilities/Player/Generic/Traits/DefaultPlayer/GAS_DefaultPlayer.GAS_DefaultPlayer" };
 
-        Profile.AbilitySets = { "FortAbilitySet GAB_Athena_Sprint.GAB_Athena_Sprint", "FortAbilitySet GAB_Athena_Jump.GAB_Athena_Jump",
-            "FortAbilitySet GAB_Athena_DBNO.GAB_Athena_DBNO", "FortAbilitySet GAB_Athena_Emote.GAB_Athena_Emote",
-            "FortAbilitySet GA_DefaultPlayer_InteractSearch.GA_DefaultPlayer_InteractSearch",
-            "FortAbilitySet GA_DefaultPlayer_InteractUse.GA_DefaultPlayer_InteractUse", "FortAbilitySet GAB_AthenaSpawnGear.GAB_AthenaSpawnGear" };
-
-        Profile.SafeZonePhases = { { 210.0f, 180.0f, 133000.0f, 1.0f }, { 120.0f, 120.0f, 66500.0f, 1.0f }, { 90.0f, 90.0f, 33250.0f, 2.0f },
-            { 90.0f, 90.0f, 16625.0f, 5.0f }, { 60.0f, 60.0f, 8312.0f, 8.0f }, { 60.0f, 60.0f, 4156.0f, 10.0f }, { 45.0f, 45.0f, 2078.0f, 10.0f },
-            { 45.0f, 45.0f, 1039.0f, 10.0f }, { 30.0f, 30.0f, 0.0f, 10.0f } };
-
-        Profile.KnownPlaylists = { "Playlist_DefaultSolo", "Playlist_DefaultDuo", "Playlist_DefaultSquad", "Playlist_50v50" };
-
-        Profile.EngineOffsets.ObjectArray = 0x04BA7768;
-        Profile.EngineOffsets.StaticFindObject = 0x014E5890;
-        Profile.EngineOffsets.NameConstructor = 0x01331470;
-        Profile.EngineOffsets.NameToString = 0x013298E0;
+        Profile.EngineOffsets.GObjects = 0x04BA7768;
+        Profile.EngineOffsets.AppendString = 0x013298E0;
+        Profile.EngineOffsets.GWorld = 0x04CA7250;
         Profile.EngineOffsets.ProcessEvent = 0x014C04C0;
-        Profile.EngineOffsets.MemoryRealloc = 0x01280550;
+        Profile.EngineOffsets.ProcessEventIdx = 0x40;
+        Profile.EngineOffsets.Realloc = 0x01280550;
+        Profile.EngineOffsets.StaticFindObject = 0x014E5890;
+        Profile.EngineOffsets.StaticLoadObject = 0x014E6B50;
+        Profile.EngineOffsets.FNameConstructor = 0x01327FE0;
 
-        Profile.FallbackSpawnLocation = FVector(1250.0f, 1818.0f, 3284.0f);
-        Profile.MapRadius = 140000.0f;
-        Profile.AircraftAltitude = 12000.0f;
-        Profile.SkydiveDropHeight = 10000.0f;
+        Profile.EngineFunctions.NetDriverTickFlush = 0x022B6AB0;
+        Profile.EngineFunctions.CollectGarbage = 0x025151D0;
+        Profile.EngineFunctions.AbilitySystemGiveAbility = 0x00527580;
+        Profile.EngineFunctions.AbilitySystemInternalTryActivateAbility = 0x00528B50;
+        Profile.EngineFunctions.GameplayAbilitySpecConstructor = 0x0103DA30;
 
-        Profile.AircraftFlightSeconds = 45.0f;
-        Profile.SafeZoneStartDelaySeconds = 30.0f;
-        Profile.EndOfMatchDelaySeconds = 15.0f;
-
-        Profile.StartingHealth = 100.0f;
-        Profile.StartingShield = 0.0f;
-        Profile.MaxHealth = 100.0f;
-        Profile.MaxShield = 100.0f;
-        Profile.BackpackSize = 5;
+        Profile.NetworkLayout.NetDriverReplicationDriver = 0x500;
+        Profile.NetworkLayout.ServerReplicateActorsVirtualIndex = 0x53;
 
         return Profile;
     }
@@ -83,12 +73,17 @@ namespace
 
 std::string FFortBuildProfile::ResolvePlaylistPath(std::string_view Identifier) const
 {
-    if (Identifier.find('.') != std::string_view::npos)
+    if (Identifier.empty())
+    {
+        return AssetPaths.DefaultPlaylistPath;
+    }
+
+    if (Identifier.find('/') != std::string_view::npos)
     {
         return std::string(Identifier);
     }
 
-    return "FortPlaylistAthena " + std::string(Identifier) + '.' + std::string(Identifier);
+    return "/Game/Athena/Playlists/" + std::string(Identifier) + '.' + std::string(Identifier);
 }
 
 std::string FFortBuildProfile::Describe() const

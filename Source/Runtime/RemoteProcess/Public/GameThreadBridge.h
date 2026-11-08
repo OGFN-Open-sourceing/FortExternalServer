@@ -19,7 +19,12 @@ namespace FBridgeLayout
     inline constexpr int32 CommandResultFloat = 0x60;
     inline constexpr int32 CommandCompletion = 0x68;
     inline constexpr int32 PumpHoldRequest = 0x70;
-    inline constexpr int32 ControlBlockSize = 0x80;
+    inline constexpr int32 PumpHoldEngaged = 0x78;
+    inline constexpr int32 CommandTicket = 0x80;
+    inline constexpr int32 CompletedTicket = 0x88;
+    inline constexpr int32 PumpDepth = 0x90;
+    inline constexpr int32 GameThreadId = 0x98;
+    inline constexpr int32 ControlBlockSize = 0xC0;
 
     inline constexpr int32 ChannelRequestSequence = 0x00;
     inline constexpr int32 ChannelAckSequence = 0x08;
@@ -31,7 +36,7 @@ namespace FBridgeLayout
     inline constexpr int32 ChannelEnabled = 0x50;
     inline constexpr int32 ChannelSize = 0x60;
 
-    inline constexpr int32 MaximumChannels = 32;
+    inline constexpr int32 MaximumChannels = 64;
     inline constexpr int32 MaximumCommandArguments = 8;
     inline constexpr int32 IntegerArgumentCount = 4;
     inline constexpr size_t ReservedStubSize = 512;
@@ -67,15 +72,23 @@ using FHookHandler = std::function<FHookResponse(const FHookInvocation&)>;
 class FGameThreadBridge
 {
 public:
-    bool Initialize(const FRemoteMemory& InMemory, FRemoteAllocation& InArena);
+    bool Initialize(const FRemoteMemory& InMemory, FRemoteAllocation& InArena, uint32 InGameThreadId);
 
     void Shutdown();
 
     bool IsInitialized() const;
 
+    bool InstallGameThreadPump(FRemoteAddress TargetFunction);
+
     int32 InstallHook(FRemoteAddress TargetFunction, EHookDispatchMode Mode, FHookHandler Handler);
 
+    int32 InstallPointerHook(FRemoteAddress PointerSlot, EHookDispatchMode Mode, FHookHandler Handler);
+
     bool InstallConstantHook(FRemoteAddress TargetFunction, uint64 ReturnValue);
+
+    bool InstallPrologueCall(FRemoteAddress TargetFunction, FRemoteAddress RoutineAddress);
+
+    FRemoteAddress EmitRoutine(FX64Emitter& Emitter);
 
     bool RewriteHookArgument(int32 ChannelIndex, int32 ArgumentIndex, uint64 Value) const;
 
@@ -93,7 +106,7 @@ public:
 
     void EndGameThreadHold();
 
-    uint64 CallFunction(FRemoteAddress Function, const std::vector<uint64>& Arguments, uint64 TimeoutMilliseconds = 10000);
+    uint64 CallFunction(FRemoteAddress Function, const std::vector<uint64>& Arguments);
 
     FRemoteAllocation& GetArena() const;
 
@@ -103,21 +116,32 @@ private:
     struct FHookRegistration
     {
         bool bActive = false;
+        bool bDispatching = false;
         EHookDispatchMode Mode = EHookDispatchMode::PumpOnly;
         FHookHandler Handler;
         FRemoteDetour Detour;
         FRemoteAddress ChannelAddress = InvalidRemoteAddress;
         FRemoteAddress StubAddress = InvalidRemoteAddress;
+        FRemoteAddress PointerSlot = InvalidRemoteAddress;
+        FRemoteAddress OriginalPointer = InvalidRemoteAddress;
         uint64 LastHandledSequence = 0;
     };
+
+    int32 AcquireFreeChannel() const;
+
+    void ActivateRegistration(int32 ChannelIndex, EHookDispatchMode Mode, FHookHandler Handler, FRemoteAddress StubAddress);
 
     bool EmitPumpRoutine();
 
     bool EmitHookStub(int32 ChannelIndex, EHookDispatchMode Mode, FRemoteAddress StubAddress, FRemoteAddress TrampolineAddress);
 
+    bool EmitPrologueCallStub(FRemoteAddress StubAddress, FRemoteAddress RoutineAddress, FRemoteAddress TrampolineAddress);
+
     void EmitCommandDispatch(FX64Emitter& Emitter, size_t LoopLabel) const;
 
     FRemoteAddress GetChannelAddress(int32 ChannelIndex) const;
+
+    bool WaitForGameThread(FRemoteAddress Function, const std::function<bool()>& IsComplete);
 
     const FRemoteMemory* Memory = nullptr;
     FRemoteAllocation* Arena = nullptr;
@@ -126,8 +150,9 @@ private:
     FRemoteAddress PumpRoutineAddress = InvalidRemoteAddress;
     std::vector<FHookRegistration> Hooks;
     std::vector<FRemoteDetour> ConstantHooks;
+    FRemoteDetour GameThreadPumpDetour;
+    uint64 NextCommandTicket = 0;
     uint64 HoldDepth = 0;
-    bool bServicingHooks = false;
 };
 
 class FGameThreadHoldScope

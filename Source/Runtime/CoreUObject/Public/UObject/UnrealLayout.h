@@ -73,8 +73,8 @@ namespace FUnrealLayout
     inline constexpr uint64 PropertyFlag_OutParm = 0x0000000000000100ull;
     inline constexpr uint64 PropertyFlag_Parm = 0x0000000000000080ull;
 
-    inline constexpr int32 FindNameMode = 1;
-    inline constexpr int32 AddNameMode = 0;
+    inline constexpr int32 FindNameMode = 0;
+    inline constexpr int32 AddNameMode = 1;
 
     inline constexpr int32 AnyPackageSentinel = -1;
 }

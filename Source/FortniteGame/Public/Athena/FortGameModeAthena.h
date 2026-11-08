@@ -1,12 +1,13 @@
 #pragma once
 
 #include "FortniteGame/Public/Athena/FortGameStateAthena.h"
-#include "FortniteGame/Public/Player/FortPlayerControllerAthena.h"
+#include "FortniteGame/Public/Athena/Player/FortPlayerControllerAthena.h"
+#include "Runtime/CoreUObject/Public/UObject/NativeFunctionOverrides.h"
 
-class AFortGameModeAthena : public FObjectWrapper
+class AFortGameModeAthena : public AActor
 {
 public:
-    using FObjectWrapper::FObjectWrapper;
+    using AActor::AActor;
 
     AFortGameStateAthena GetGameState() const;
 
@@ -37,6 +38,20 @@ public:
     bool SetupPlaylist(const AFortPlaylistAthena& Playlist);
 
     void ChangeGameSessionMaxPlayers(int32 MaxPlayers);
+
+    bool IsWorldReady() const;
+
+    void SetWorldIsReady(bool bValue);
+
+    void SetWarmupRequiredPlayerCount(int32 Value);
+
+    FObjectHandle GetDefaultPawnClassForController(const AActor& Controller) const;
+
+    static ENativeOverrideResult execReadyToStartMatch(const FNativeFunctionCall& Call);
+
+    static ENativeOverrideResult execSpawnDefaultPawnFor(const FNativeFunctionCall& Call);
+
+    static ENativeOverrideResult execHandleStartingNewPlayer(const FNativeFunctionCall& Call);
 };
 
 namespace FMatchStateNames

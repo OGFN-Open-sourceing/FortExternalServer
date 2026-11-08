@@ -6,7 +6,6 @@
 #include "Runtime/CoreUObject/Public/UObject/UnrealTypes.h"
 #include "Runtime/RemoteProcess/Public/GameThreadBridge.h"
 #include "Runtime/RemoteProcess/Public/ModuleImage.h"
-#include "Runtime/RemoteProcess/Public/SignatureScanner.h"
 
 #include <unordered_map>
 
@@ -19,7 +18,6 @@ struct FUnrealGlobals
     FRemoteAddress NameToString = InvalidRemoteAddress;
     FRemoteAddress ProcessEvent = InvalidRemoteAddress;
     FRemoteAddress MemoryRealloc = InvalidRemoteAddress;
-    FRemoteAddress SpawnActor = InvalidRemoteAddress;
     int32 ProcessEventVirtualIndex = InvalidIndex;
 
     bool IsComplete() const;
@@ -36,11 +34,9 @@ struct FEngineVersionInfo
 class FUnrealRuntime
 {
 public:
-    void SetOffsetOverrides(const FUnrealGlobals& Overrides);
-
     void SetObjectArrayLayout(bool bChunked, int32 InObjectsPerChunk);
 
-    bool Initialize(FGameThreadBridge& InBridge, const FModuleImage& InImage);
+    bool Initialize(FGameThreadBridge& InBridge, const FModuleImage& InImage, const FUnrealGlobals& InGlobals);
 
     bool IsInitialized() const;
 
@@ -103,11 +99,7 @@ public:
     bool DumpObjectsToFile(const std::wstring& FilePath) const;
 
 private:
-    bool ResolveGlobals();
-
-    bool ResolveProcessEvent(const FSignatureScanner& Scanner);
-
-    bool ResolveNameConstructor(const FSignatureScanner& Scanner);
+    bool ValidateGlobals() const;
 
     FRemoteAddress GetObjectItemArray() const;
 
@@ -116,11 +108,6 @@ private:
     FUnrealGlobals Globals;
     FEngineVersionInfo VersionInfo;
 
-    void ApplyOffsetOverrides();
-
-    void ReportResolutionFailure(const FSignatureScanner& Scanner) const;
-
-    FUnrealGlobals OffsetOverrides;
     bool bChunkedObjectArray = false;
     int32 ObjectsPerChunk = 0;
     FRemoteAddress ScratchArena = InvalidRemoteAddress;

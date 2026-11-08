@@ -93,6 +93,10 @@ public:
 
     void IncrementMemory(EX64Register Base, int32 Displacement);
 
+    void DecrementMemory(EX64Register Base, int32 Displacement);
+
+    void LoadCurrentThreadId(EX64Register Destination);
+
     void CallRegister(EX64Register Register);
 
     void JumpToLabel(FLabelId Label);

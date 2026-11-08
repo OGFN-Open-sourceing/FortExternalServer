@@ -1,36 +1,12 @@
 #pragma once
 
-#include "FortniteGame/Public/Gameplay/FortAthenaTypes.h"
-#include "Runtime/Engine/Public/Engine/World.h"
+#include "FortniteGame/Public/Athena/FortPlaylistAthena.h"
+#include "Runtime/Engine/Classes/GameFramework/Actor.h"
 
-class AFortPlaylistAthena : public FObjectWrapper
+class AFortGameStateAthena : public AActor
 {
 public:
-    using FObjectWrapper::FObjectWrapper;
-
-    int32 GetPlaylistId() const;
-
-    int32 GetMaxSquadSize() const;
-
-    int32 GetMaxTeamCount() const;
-
-    void SetMaxSquadSize(int32 Value);
-
-    void SetMaxTeamCount(int32 Value);
-
-    void SetRespawnType(EAthenaRespawnType Type);
-
-    void SetRespawnLocation(EAthenaRespawnLocation Location);
-
-    void SetFriendlyFireType(EFriendlyFireType Type);
-
-    void SetDownedButNotOutEnabled(bool bEnabled);
-};
-
-class AFortGameStateAthena : public FObjectWrapper
-{
-public:
-    using FObjectWrapper::FObjectWrapper;
+    using AActor::AActor;
 
     EAthenaGamePhase GetGamePhase() const;
 
@@ -85,6 +61,4 @@ public:
     FObjectHandle GetPlayerStateAt(int32 Index) const;
 
     FObjectHandle GetMapInfo() const;
-
-    void ForceNetUpdate();
 };

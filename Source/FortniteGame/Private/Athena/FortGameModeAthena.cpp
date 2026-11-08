@@ -1,4 +1,6 @@
 #include "FortniteGame/Public/Athena/FortGameModeAthena.h"
+#include "FortniteGame/Public/FortniteGameModule.h"
+#include "Runtime/Engine/Classes/Kismet/GameplayStatics.h"
 
 AFortGameStateAthena AFortGameModeAthena::GetGameState() const
 {
@@ -89,7 +91,7 @@ bool AFortGameModeAthena::SetupPlaylist(const AFortPlaylistAthena& Playlist)
         return false;
     }
 
-    Object.SetObjectProperty("CurrentPlaylistData", Playlist.GetObject());
+    Object.SetProperty<int32>("CurrentPlaylistId", Playlist.GetPlaylistId());
 
     AFortGameStateAthena GameState = GetGameState();
     if (!GameState)
@@ -114,4 +116,143 @@ void AFortGameModeAthena::ChangeGameSessionMaxPlayers(int32 MaxPlayers)
 
     GameSession.SetProperty<int32>("MaxPlayers", MaxPlayers);
     GameSession.SetProperty<int32>("MaxSpectators", MaxPlayers);
+}
+
+bool AFortGameModeAthena::IsWorldReady() const
+{
+    return Object.GetBoolProperty("bWorldIsReady");
+}
+
+void AFortGameModeAthena::SetWorldIsReady(bool bValue)
+{
+    Object.SetBoolProperty("bWorldIsReady", bValue);
+}
+
+void AFortGameModeAthena::SetWarmupRequiredPlayerCount(int32 Value)
+{
+    Object.SetProperty<int32>("WarmupRequiredPlayerCount", Value);
+}
+
+FObjectHandle AFortGameModeAthena::GetDefaultPawnClassForController(const AActor& Controller) const
+{
+    struct FGetDefaultPawnClassForControllerParameters
+    {
+        FRemoteAddress InController = InvalidRemoteAddress;
+        FRemoteAddress ReturnValue = InvalidRemoteAddress;
+    } Parameters;
+
+    Parameters.InController = Controller.GetAddress();
+
+    if (!Object.InvokeFunction("GetDefaultPawnClassForController", &Parameters, sizeof(Parameters)))
+    {
+        return FObjectHandle();
+    }
+
+    return Object.GetRuntime().MakeHandle(Parameters.ReturnValue);
+}
+
+ENativeOverrideResult AFortGameModeAthena::execReadyToStartMatch(const FNativeFunctionCall& Call)
+{
+    static const FObjectHandle AthenaGameModeClass = Call.GetRuntime().FindClass("FortGameModeAthena");
+
+    AFortGameModeAthena GameMode(Call.GetContext());
+
+    if (!GameMode.GetObject().IsA(AthenaGameModeClass) || GameMode.IsWorldReady())
+    {
+        return ENativeOverrideResult::ContinueToOriginal;
+    }
+
+    const AFortGameStateAthena GameState = GameMode.GetGameState();
+    if (!GameState || !GameState.GetMapInfo())
+    {
+        Call.SetResult<bool>(false);
+        return ENativeOverrideResult::Handled;
+    }
+
+    const FAthenaMatchSettings& Settings = FFortniteGameModule::Get().GetMatchSettings();
+
+    const AFortPlaylistAthena Playlist(Call.GetRuntime().FindOrLoadObject(Settings.PlaylistPath));
+    if (!GameMode.SetupPlaylist(Playlist))
+    {
+        UE_LOG_WARNING("Athena", "Playlist " + Settings.PlaylistPath + " could not be applied");
+    }
+
+    GameMode.SetWarmupRequiredPlayerCount(Settings.MinimumPlayersToStart);
+    GameMode.SetDisableGarbageCollectionDuringMatch(true);
+    GameMode.ChangeGameSessionMaxPlayers(Settings.MaxPlayers);
+    GameMode.SetWorldIsReady(true);
+
+    FFortniteGameModule::Get().GetNetworkHooks().DisableGarbageCollection();
+
+    UE_LOG_DISPLAY("Athena", "World is ready, waiting for " + std::to_string(Settings.MinimumPlayersToStart) + " players");
+
+    Call.SetResult<bool>(false);
+    return ENativeOverrideResult::Handled;
+}
+
+ENativeOverrideResult AFortGameModeAthena::execSpawnDefaultPawnFor(const FNativeFunctionCall& Call)
+{
+    struct FSpawnDefaultPawnForParameters
+    {
+        FRemoteAddress NewPlayer = InvalidRemoteAddress;
+        FRemoteAddress StartSpot = InvalidRemoteAddress;
+        FRemoteAddress ReturnValue = InvalidRemoteAddress;
+    };
+
+    const FUnrealRuntime& Runtime = Call.GetRuntime();
+    const FSpawnDefaultPawnForParameters Parameters = Call.GetParameters<FSpawnDefaultPawnForParameters>();
+
+    const AFortGameModeAthena GameMode(Call.GetContext());
+    const AFortPlayerControllerAthena Controller(Runtime.MakeHandle(Parameters.NewPlayer));
+    const AActor StartSpot(Runtime.MakeHandle(Parameters.StartSpot));
+
+    Call.SetResult<FRemoteAddress>(0);
+
+    if (!Controller || !StartSpot || Controller.IsLocalController())
+    {
+        return ENativeOverrideResult::Handled;
+    }
+
+    const FObjectHandle PawnClass = GameMode.GetDefaultPawnClassForController(Controller);
+    if (!PawnClass)
+    {
+        UE_LOG_ERROR("Athena", "No pawn class for " + Controller.GetName());
+        return ENativeOverrideResult::Handled;
+    }
+
+    const FRotator SpotRotation = StartSpot.GetActorRotation();
+    const FTransform SpawnTransform = FTransform::FromLocationAndRotation(StartSpot.GetActorLocation(), FRotator(0.0f, SpotRotation.Yaw, 0.0f));
+
+    const AFortPlayerPawnAthena Pawn(
+        UGameplayStatics::SpawnActor(GameMode, PawnClass, SpawnTransform, ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn, Controller).GetObject());
+
+    if (!Pawn)
+    {
+        UE_LOG_ERROR("Athena", "Failed to spawn a pawn for " + Controller.GetName());
+        return ENativeOverrideResult::Handled;
+    }
+
+    Call.SetResult<FRemoteAddress>(Pawn.GetAddress());
+    Controller.SetupAthenaPawn(Pawn);
+
+    UE_LOG_DISPLAY("Athena", Controller.GetName() + " spawned as " + Pawn.GetName() + " at " + StartSpot.GetName());
+    return ENativeOverrideResult::Handled;
+}
+
+ENativeOverrideResult AFortGameModeAthena::execHandleStartingNewPlayer(const FNativeFunctionCall& Call)
+{
+    struct FHandleStartingNewPlayerParameters
+    {
+        FRemoteAddress NewPlayer = InvalidRemoteAddress;
+    };
+
+    const FHandleStartingNewPlayerParameters Parameters = Call.GetParameters<FHandleStartingNewPlayerParameters>();
+    const AFortPlayerControllerAthena Controller(Call.GetRuntime().MakeHandle(Parameters.NewPlayer));
+
+    if (Controller && !Controller.IsLocalController())
+    {
+        Controller.EnsureWorldInventory();
+    }
+
+    return ENativeOverrideResult::ContinueToOriginal;
 }

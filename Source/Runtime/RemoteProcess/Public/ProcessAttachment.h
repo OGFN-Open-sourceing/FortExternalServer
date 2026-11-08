@@ -39,6 +39,8 @@ public:
 
     uint32 GetProcessId() const;
 
+    uint32 GetMainThreadId() const;
+
     void* GetProcessHandle() const;
 
     bool RefreshModules();
@@ -51,10 +53,13 @@ public:
 
     static uint32 FindProcessIdByImageName(std::wstring_view ImageName);
 
+    static uint32 FindOldestThreadId(uint32 OwnerProcessId);
+
 private:
     void* ProcessHandle = nullptr;
     void* MainThreadHandle = nullptr;
     uint32 ProcessId = 0;
+    uint32 MainThreadId = 0;
     std::wstring PrimaryModuleName;
     std::vector<FRemoteModuleInfo> Modules;
     std::vector<void*> SuspendedThreads;

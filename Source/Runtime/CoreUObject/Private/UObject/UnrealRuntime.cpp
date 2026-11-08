@@ -1,12 +1,7 @@
 #include "Runtime/CoreUObject/Public/UObject/UnrealRuntime.h"
-#include "Runtime/CoreUObject/Public/UObject/CoreUObjectSignatures.h"
-#include "Runtime/RemoteProcess/Public/ProcessAttachment.h"
 
 #include <filesystem>
 #include <fstream>
-
-#include <windows.h>
-#include <psapi.h>
 
 namespace
 {
@@ -37,21 +32,17 @@ bool FUnrealGlobals::IsComplete() const
         NameToString != InvalidRemoteAddress && ProcessEvent != InvalidRemoteAddress && MemoryRealloc != InvalidRemoteAddress;
 }
 
-void FUnrealRuntime::SetOffsetOverrides(const FUnrealGlobals& Overrides)
-{
-    OffsetOverrides = Overrides;
-}
-
 void FUnrealRuntime::SetObjectArrayLayout(bool bChunked, int32 InObjectsPerChunk)
 {
     bChunkedObjectArray = bChunked;
     ObjectsPerChunk = InObjectsPerChunk > 0 ? InObjectsPerChunk : FUnrealLayout::FChunkedObjectArray_ChunkBytes / FUnrealLayout::FUObjectItem_Stride;
 }
 
-bool FUnrealRuntime::Initialize(FGameThreadBridge& InBridge, const FModuleImage& InImage)
+bool FUnrealRuntime::Initialize(FGameThreadBridge& InBridge, const FModuleImage& InImage, const FUnrealGlobals& InGlobals)
 {
     Bridge = &InBridge;
     Image = &InImage;
+    Globals = InGlobals;
 
     ScratchArena = Bridge->GetArena().AllocateZeroed(ScratchArenaBytes, 16);
     ScratchArenaSize = ScratchArena != InvalidRemoteAddress ? ScratchArenaBytes : 0;
@@ -63,7 +54,7 @@ bool FUnrealRuntime::Initialize(FGameThreadBridge& InBridge, const FModuleImage&
         return false;
     }
 
-    if (!ResolveGlobals())
+    if (!ValidateGlobals())
     {
         return false;
     }
@@ -119,314 +110,27 @@ const FModuleImage& FUnrealRuntime::GetImage() const
     return *Image;
 }
 
-bool FUnrealRuntime::ResolveGlobals()
+bool FUnrealRuntime::ValidateGlobals() const
 {
-    const FSignatureScanner Scanner(*Image);
+    const std::vector<std::pair<FRemoteAddress, const char*>> Entries = { { Globals.ObjectArray, "GObjects" }, { Globals.NameToString, "AppendString" },
+        { Globals.ProcessEvent, "ProcessEvent" }, { Globals.MemoryRealloc, "Realloc" }, { Globals.StaticFindObject, "StaticFindObject" },
+        { Globals.NameConstructor, "FNameConstructor" } };
 
-    FRemoteAddress ObjectArrayReference = Scanner.FindPattern(FCoreUObjectSignatures::ObjectArrayReference);
-    if (ObjectArrayReference == InvalidRemoteAddress)
+    bool bValid = true;
+
+    for (const auto& [Address, Label] : Entries)
     {
-        ObjectArrayReference = Scanner.FindPattern(FCoreUObjectSignatures::ObjectArrayReferenceAlternate);
-    }
-
-    if (ObjectArrayReference != InvalidRemoteAddress)
-    {
-        Globals.ObjectArray = Scanner.ResolveRelativeOperand(ObjectArrayReference, 3, 7);
-    }
-
-    Globals.StaticFindObject = Scanner.FindFirstAvailable({ FCoreUObjectSignatures::StaticFindObject, FCoreUObjectSignatures::StaticFindObjectAlternate });
-    Globals.MemoryRealloc = Scanner.FindPattern(FCoreUObjectSignatures::MemoryRealloc);
-    Globals.NameToString = Scanner.FindPattern(FCoreUObjectSignatures::NameToString);
-
-    const FRemoteAddress LoadObjectAnchor = Scanner.FindWideStringReference(FCoreUObjectSignatures::StaticLoadObjectAnchor);
-    if (LoadObjectAnchor != InvalidRemoteAddress)
-    {
-        Globals.StaticLoadObject = Scanner.FindFunctionStart(LoadObjectAnchor, FCoreUObjectSignatures::FunctionStartBacktrack);
-    }
-
-    const FRemoteAddress SpawnActorAnchor = Scanner.FindWideStringReference(FCoreUObjectSignatures::SpawnActorAnchor);
-    if (SpawnActorAnchor != InvalidRemoteAddress)
-    {
-        Globals.SpawnActor = Scanner.ScanForSignature(SpawnActorAnchor, "4C 8B DC", false, 0, FCoreUObjectSignatures::AnchorScanRange);
-    }
-
-    ResolveNameConstructor(Scanner);
-    ResolveProcessEvent(Scanner);
-
-    ApplyOffsetOverrides();
-
-    if (!Globals.IsComplete())
-    {
-        UE_LOG_ERROR("CoreUObject", "Failed to resolve every required engine global");
-        UE_LOG_ERROR("CoreUObject", "ObjectArray " + FStringConv::ToHex(Globals.ObjectArray) + " StaticFindObject " + FStringConv::ToHex(Globals.StaticFindObject));
-        UE_LOG_ERROR("CoreUObject", "NameConstructor " + FStringConv::ToHex(Globals.NameConstructor) + " NameToString " + FStringConv::ToHex(Globals.NameToString));
-        UE_LOG_ERROR("CoreUObject", "ProcessEvent " + FStringConv::ToHex(Globals.ProcessEvent) + " Realloc " + FStringConv::ToHex(Globals.MemoryRealloc));
-        ReportResolutionFailure(Scanner);
-        return false;
-    }
-
-    return true;
-}
-
-void FUnrealRuntime::ApplyOffsetOverrides()
-{
-    const auto Apply = [this](FRemoteAddress& Target, FRemoteAddress Override, const char* Label) {
-        if (Override == InvalidRemoteAddress || Override == 0)
+        if (Address == InvalidRemoteAddress || !Image->ContainsAddress(Address))
         {
-            return;
-        }
-
-        Target = Image->GetBaseAddress() + Override;
-        UE_LOG_DISPLAY("CoreUObject", std::string(Label) + " taken from the build profile at " + FStringConv::ToHex(Target));
-    };
-
-    Apply(Globals.ObjectArray, OffsetOverrides.ObjectArray, "ObjectArray");
-    Apply(Globals.StaticFindObject, OffsetOverrides.StaticFindObject, "StaticFindObject");
-    Apply(Globals.StaticLoadObject, OffsetOverrides.StaticLoadObject, "StaticLoadObject");
-    Apply(Globals.NameConstructor, OffsetOverrides.NameConstructor, "NameConstructor");
-    Apply(Globals.NameToString, OffsetOverrides.NameToString, "NameToString");
-    Apply(Globals.ProcessEvent, OffsetOverrides.ProcessEvent, "ProcessEvent");
-    Apply(Globals.MemoryRealloc, OffsetOverrides.MemoryRealloc, "MemoryRealloc");
-    Apply(Globals.SpawnActor, OffsetOverrides.SpawnActor, "SpawnActor");
-
-    if (Globals.ObjectArray != InvalidRemoteAddress && Globals.ObjectArray != 0)
-    {
-        const FRemoteAddress ObjectArrayRaw = Globals.ObjectArray;
-        const uint64 ValAtBase = GetMemory().Read<uint64>(ObjectArrayRaw);
-
-        if (ValAtBase == 0)
-        {
-            UE_LOG_DISPLAY("CoreUObject", "ObjectArray RVA " + FStringConv::ToHex(ObjectArrayRaw) + " is zero - scanning all committed memory...");
-
-            const HANDLE ProcessHandle = static_cast<HANDLE>(Bridge->GetMemory().GetProcess()->GetProcessHandle());
-            if (ProcessHandle != nullptr)
-            {
-                MEMORY_BASIC_INFORMATION Mbi = {};
-                uint64 ScanAddress = 0;
-                int32 CandidatesFound = 0;
-
-                while (VirtualQueryEx(ProcessHandle, reinterpret_cast<LPCVOID>(ScanAddress), &Mbi, sizeof(Mbi)) != 0)
-                {
-                    if (Mbi.State == MEM_COMMIT && (Mbi.Protect & (PAGE_READWRITE | PAGE_READONLY | PAGE_WRITECOPY | PAGE_EXECUTE_READ | PAGE_EXECUTE_READWRITE | PAGE_EXECUTE_WRITECOPY)) != 0
-                        && (Mbi.Protect & (PAGE_NOACCESS | PAGE_GUARD)) == 0)
-                    {
-                        const uint64 RegionBase = reinterpret_cast<uint64>(Mbi.BaseAddress);
-                        const uint64 RegionSize = Mbi.RegionSize;
-
-                        constexpr DWORD ExecutableMask = PAGE_EXECUTE | PAGE_EXECUTE_READ | PAGE_EXECUTE_READWRITE | PAGE_EXECUTE_WRITECOPY;
-                        const bool bExecutable = (Mbi.Protect & ExecutableMask) != 0;
-
-                        for (uint64 Off = 0; Off + 0x20 <= RegionSize && CandidatesFound < 10; Off += 8)
-                        {
-                            const FRemoteAddress ProbeAddr = RegionBase + Off;
-                            const uint64 Ptr0 = GetMemory().Read<uint64>(ProbeAddr);
-                            const int32 Count0C = GetMemory().Read<int32>(ProbeAddr + 0x0C);
-                            const int32 Count14 = GetMemory().Read<int32>(ProbeAddr + 0x14);
-
-                            const bool bCandidate0C = Count0C >= 40000 && Count0C <= 120000;
-                            const bool bCandidate14 = Count14 >= 40000 && Count14 <= 120000;
-
-                            if (bCandidate0C || bCandidate14)
-                            {
-                                const uint64 PtrVal = GetMemory().Read<uint64>(ProbeAddr);
-                                const bool bPtrReadable = GetMemory().IsCommitted(PtrVal) && PtrVal > 0x10000;
-
-                                if (bPtrReadable)
-                                {
-                                    char label[256];
-                                    snprintf(label, sizeof(label), "ObjectArray candidate at %s (RVA 0x%llX)%s: Ptr=0x%llX Count@0C=%d Count@14=%d",
-                                        FStringConv::ToHex(ProbeAddr).c_str(), (unsigned long long)(ProbeAddr - Image->GetBaseAddress()),
-                                        bExecutable ? " [exec]" : " [data]",
-                                        (unsigned long long)Ptr0, Count0C, Count14);
-                                    UE_LOG_DISPLAY("CoreUObject", label);
-
-                                    if ((bCandidate14 && Count14 >= 80000) || (bCandidate0C && Count0C >= 80000 && !bCandidate14))
-                                    {
-                                        Globals.ObjectArray = ProbeAddr;
-                                        UE_LOG_DISPLAY("CoreUObject", "ObjectArray set to " + FStringConv::ToHex(ProbeAddr));
-                                        CandidatesFound = -1;
-                                        break;
-                                    }
-
-                                    ++CandidatesFound;
-                                }
-                            }
-                        }
-
-                        if (CandidatesFound == -1)
-                        {
-                            break;
-                        }
-                    }
-
-                    const uint64 NextAddress = reinterpret_cast<uint64>(Mbi.BaseAddress) + Mbi.RegionSize;
-                    if (NextAddress <= ScanAddress)
-                    {
-                        break;
-                    }
-                    ScanAddress = NextAddress;
-                }
-
-                if (CandidatesFound >= 0 && CandidatesFound > 0)
-                {
-                    UE_LOG_DISPLAY("CoreUObject", "Found " + std::to_string(CandidatesFound) + " candidates but none matched heuristic, using first with readable pointer");
-                }
-                else if (CandidatesFound == 0)
-                {
-                    UE_LOG_WARNING("CoreUObject", "No ObjectArray candidates found in any committed memory region");
-                }
-            }
-        }
-    }
-}
-
-void FUnrealRuntime::ReportResolutionFailure(const FSignatureScanner& Scanner) const
-{
-    UE_LOG_ERROR("CoreUObject", "Image report for " + FStringConv::ToHex(Image->GetBaseAddress()) + " size " + std::to_string(Image->GetImageSize()));
-
-    const std::vector<uint8>& Bytes = Image->GetBytes();
-
-    for (const FImageSection& Section : Image->GetSections())
-    {
-        const size_t Start = Image->AddressToOffset(Section.VirtualAddress);
-        const size_t End = std::min<size_t>(Start + Section.VirtualSize, Bytes.size());
-
-        size_t NonZero = 0;
-        for (size_t Offset = Start; Offset < End; Offset += 64)
-        {
-            if (Bytes[Offset] != 0)
-            {
-                ++NonZero;
-            }
-        }
-
-        const size_t Sampled = End > Start ? (End - Start + 63) / 64 : 0;
-        const size_t Percent = Sampled != 0 ? NonZero * 100 / Sampled : 0;
-
-        UE_LOG_ERROR("CoreUObject", "Section " + Section.Name + " rva " + FStringConv::ToHex(Section.VirtualAddress - Image->GetBaseAddress()) + " size " +
-            std::to_string(Section.VirtualSize) + " executable " + (Section.IsExecutable() ? "yes" : "no") + " populated " + std::to_string(Percent) + "%");
-    }
-
-    const std::vector<std::pair<std::wstring_view, const char*>> Anchors = {
-        { FCoreUObjectSignatures::NameConstructorAnchor, "NameConstructorAnchor" },
-        { FCoreUObjectSignatures::ProcessEventAnchor, "ProcessEventAnchor" },
-        { FCoreUObjectSignatures::StaticLoadObjectAnchor, "StaticLoadObjectAnchor" },
-        { FCoreUObjectSignatures::SpawnActorAnchor, "SpawnActorAnchor" }
-    };
-
-    for (const auto& Anchor : Anchors)
-    {
-        const FRemoteAddress Literal = Scanner.FindWideStringLiteral(Anchor.first);
-        const FRemoteAddress Reference = Literal != InvalidRemoteAddress ? Scanner.FindWideStringReference(Anchor.first) : InvalidRemoteAddress;
-
-        UE_LOG_ERROR("CoreUObject", std::string(Anchor.second) + " literal " + FStringConv::ToHex(Literal) + " reference " + FStringConv::ToHex(Reference));
-    }
-
-    UE_LOG_ERROR("CoreUObject", "Set the EngineOffsets block in the build profile to run this build without a signature scan");
-}
-
-bool FUnrealRuntime::ResolveNameConstructor(const FSignatureScanner& Scanner)
-{
-    const FRemoteAddress Anchor = Scanner.FindWideStringReference(FCoreUObjectSignatures::NameConstructorAnchor);
-    if (Anchor == InvalidRemoteAddress)
-    {
-        return false;
-    }
-
-    for (size_t Offset = 0; Offset < FCoreUObjectSignatures::NameConstructorScanRange; ++Offset)
-    {
-        const uint8* Local = Image->GetLocalPointer(Anchor + Offset);
-        if (Local == nullptr)
-        {
-            break;
-        }
-
-        if (Local[0] != 0x48 || Local[1] != 0x8D)
-        {
+            UE_LOG_ERROR("CoreUObject", std::string(Label) + " is missing from the build profile or lies outside the game image");
+            bValid = false;
             continue;
         }
 
-        const uint8 BranchOpcode = Local[7];
-        if (BranchOpcode != 0xE8 && BranchOpcode != 0xE9)
-        {
-            continue;
-        }
-
-        const FRemoteAddress Target = Scanner.ResolveRelativeOperand(Anchor + Offset + 7, 1, 5);
-        if (Image->ContainsAddress(Target))
-        {
-            Globals.NameConstructor = Target;
-            return true;
-        }
+        UE_LOG_DISPLAY("CoreUObject", std::string(Label) + " at " + FStringConv::ToHex(Address));
     }
 
-    return false;
-}
-
-bool FUnrealRuntime::ResolveProcessEvent(const FSignatureScanner& Scanner)
-{
-    const FRemoteAddress Anchor = Scanner.FindWideStringReference(FCoreUObjectSignatures::ProcessEventAnchor);
-    if (Anchor == InvalidRemoteAddress)
-    {
-        return false;
-    }
-
-    std::vector<FRemoteAddress> Candidates;
-
-    const FRemoteAddress BackwardStart = Scanner.FindFunctionStart(Anchor, FCoreUObjectSignatures::FunctionStartBacktrack);
-    if (BackwardStart != InvalidRemoteAddress)
-    {
-        Candidates.push_back(BackwardStart);
-    }
-
-    const FRemoteAddress ForwardStart = Scanner.ScanForSignature(Anchor, "40 55", true, 0, FCoreUObjectSignatures::AnchorScanRange);
-    if (ForwardStart != InvalidRemoteAddress)
-    {
-        Candidates.push_back(ForwardStart);
-    }
-
-    const FRemoteAddress BackwardPrologue = Scanner.ScanForSignature(Anchor, "40 55", false, 0, FCoreUObjectSignatures::FunctionStartBacktrack);
-    if (BackwardPrologue != InvalidRemoteAddress)
-    {
-        Candidates.push_back(BackwardPrologue);
-    }
-
-    const FRemoteAddress ProbeObject = GetMemory().ReadPointer(GetObjectItemArray() + FUnrealLayout::FUObjectItem_Object);
-    if (ProbeObject == InvalidRemoteAddress)
-    {
-        return false;
-    }
-
-    const FRemoteAddress VirtualTable = GetMemory().ReadPointer(ProbeObject + FUnrealLayout::UObject_VirtualTable);
-    if (VirtualTable == InvalidRemoteAddress)
-    {
-        return false;
-    }
-
-    for (int32 Index = 0; Index < FCoreUObjectSignatures::VirtualTableProbeCount; ++Index)
-    {
-        const FRemoteAddress Entry = GetMemory().ReadPointer(VirtualTable + static_cast<uint64>(Index) * sizeof(FRemoteAddress));
-
-        for (const FRemoteAddress Candidate : Candidates)
-        {
-            if (Entry == Candidate)
-            {
-                Globals.ProcessEvent = Candidate;
-                Globals.ProcessEventVirtualIndex = Index;
-                UE_LOG_DISPLAY("CoreUObject", "ProcessEvent at " + FStringConv::ToHex(Candidate) + " virtual index " + std::to_string(Index));
-                return true;
-            }
-        }
-    }
-
-    if (!Candidates.empty())
-    {
-        Globals.ProcessEvent = Candidates.front();
-        UE_LOG_WARNING("CoreUObject", "ProcessEvent virtual index was not confirmed, falling back to a direct call");
-        return true;
-    }
-
-    return false;
+    return bValid;
 }
 
 bool FUnrealRuntime::RefreshVersionInfo()
