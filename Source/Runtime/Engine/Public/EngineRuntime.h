@@ -50,6 +50,8 @@ public:
 
     FObjectHandle GetLocalPlayer(int32 Index = 0) const;
 
+    bool RemoveLocalPlayers() const;
+
     FObjectHandle SpawnObject(const FObjectHandle& ClassHandle, const FObjectHandle& Outer) const;
 
     void SetEngine(const FObjectHandle& Engine);

@@ -94,6 +94,12 @@ bool FFortniteGameModule::TravelToAthena() const
 
     const std::string TravelUrl = MatchSettings.MapName + "?game=" + MatchSettings.GameModeClassPath + "?listen";
 
+    if (!EngineRuntime->RemoveLocalPlayers())
+    {
+        UE_LOG_ERROR("FortniteGame", "The local player could not be removed before travel");
+        return false;
+    }
+
     AFortPlayerControllerAthena Controller(LocalController);
     Controller.ClientTravelToMap(TravelUrl);
 

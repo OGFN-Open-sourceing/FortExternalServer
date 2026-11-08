@@ -160,6 +160,18 @@ FObjectHandle FEngineRuntime::GetLocalPlayer(int32 Index) const
     return GameInstance.GetArrayElementAsObject("LocalPlayers", Index);
 }
 
+bool FEngineRuntime::RemoveLocalPlayers() const
+{
+    const FObjectHandle GameInstance = GetGameInstance();
+    const FRemoteAddress LocalPlayers = GameInstance ? GameInstance.GetPropertyAddress("LocalPlayers") : InvalidRemoteAddress;
+    if (LocalPlayers == InvalidRemoteAddress)
+    {
+        return false;
+    }
+
+    return UnrealRuntime->GetMemory().Write<int32>(LocalPlayers + FUnrealLayout::FScriptArray_ArrayNum, 0);
+}
+
 FObjectHandle FEngineRuntime::SpawnObject(const FObjectHandle& ClassHandle, const FObjectHandle& Outer) const
 {
     const FObjectHandle GameplayStatics = UnrealRuntime->GetClassDefaultObject("GameplayStatics");
