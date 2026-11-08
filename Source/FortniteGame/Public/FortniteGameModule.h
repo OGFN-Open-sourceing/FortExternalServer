@@ -2,14 +2,14 @@
 
 #include "FortniteGame/Public/Athena/AthenaMatchSettings.h"
 #include "Runtime/CoreUObject/Public/UObject/NativeFunctionOverrides.h"
-#include "Runtime/Engine/Public/NetworkHooks.h"
+#include "Runtime/Engine/Public/EngineRuntime.h"
 
 class FFortniteGameModule
 {
 public:
     static FFortniteGameModule& Get();
 
-    bool StartupModule(FEngineRuntime& InEngineRuntime, const FNetworkHooks& InNetworkHooks, const FAthenaMatchSettings& InMatchSettings);
+    bool StartupModule(FEngineRuntime& InEngineRuntime, const FAthenaMatchSettings& InMatchSettings);
 
     void ShutdownModule();
 
@@ -19,15 +19,12 @@ public:
 
     const FAthenaMatchSettings& GetMatchSettings() const;
 
-    const FNetworkHooks& GetNetworkHooks() const;
-
 private:
     bool RegisterNativeOverrides();
 
     bool PrepareGameModeDefaults() const;
 
     FEngineRuntime* EngineRuntime = nullptr;
-    const FNetworkHooks* NetworkHooks = nullptr;
     FAthenaMatchSettings MatchSettings;
     FNativeFunctionOverrides NativeOverrides;
 };

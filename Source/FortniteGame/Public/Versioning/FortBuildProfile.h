@@ -57,7 +57,7 @@ struct FEngineOffsetProfile
 struct FEngineFunctionProfile
 {
     uint32 NetDriverTickFlush = 0;
-    uint32 CollectGarbage = 0;
+    uint32 EngineTick = 0;
     uint32 AbilitySystemGiveAbility = 0;
     uint32 AbilitySystemInternalTryActivateAbility = 0;
     uint32 GameplayAbilitySpecConstructor = 0;

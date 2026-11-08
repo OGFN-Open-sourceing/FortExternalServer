@@ -328,74 +328,137 @@ bool FGameThreadBridge::EmitPrologueCallStub(FRemoteAddress StubAddress, FRemote
     return Memory->WriteRaw(StubAddress, Emitter.GetBytes().data(), Emitter.GetBytes().size());
 }
 
-bool FGameThreadBridge::InstallGameThreadPump(FRemoteAddress TargetFunction)
+int32 FGameThreadBridge::FindVirtualIndex(FRemoteAddress Object, FRemoteAddress Function) const
 {
-    if (!IsInitialized() || TargetFunction == InvalidRemoteAddress || GameThreadPumpDetour.IsInstalled())
+    if (Memory == nullptr || Object == InvalidRemoteAddress || Function == InvalidRemoteAddress)
     {
+        return InvalidIndex;
+    }
+
+    const FRemoteAddress Table = Memory->ReadPointer(Object);
+    if (Table == InvalidRemoteAddress || Table == 0)
+    {
+        return InvalidIndex;
+    }
+
+    std::vector<uint64> Entries(FBridgeLayout::ShadowVirtualTableEntries);
+    if (!Memory->ReadRaw(Table, Entries.data(), Entries.size() * sizeof(uint64)))
+    {
+        return InvalidIndex;
+    }
+
+    for (int32 Index = 0; Index < static_cast<int32>(Entries.size()); ++Index)
+    {
+        if (Entries[static_cast<size_t>(Index)] == Function)
+        {
+            return Index;
+        }
+    }
+
+    return InvalidIndex;
+}
+
+FRemoteAddress FGameThreadBridge::AcquireShadowVirtualTable(FRemoteAddress Object)
+{
+    for (const FShadowVirtualTable& Shadow : ShadowVirtualTables)
+    {
+        if (Shadow.Object == Object)
+        {
+            return Shadow.ShadowTable;
+        }
+    }
+
+    const FRemoteAddress OriginalTable = Memory->ReadPointer(Object);
+    if (OriginalTable == InvalidRemoteAddress || OriginalTable == 0)
+    {
+        return InvalidRemoteAddress;
+    }
+
+    const size_t CopiedEntries = static_cast<size_t>(FBridgeLayout::ShadowVirtualTableEntries) + 1;
+    std::vector<uint64> Entries(CopiedEntries);
+    if (!Memory->ReadRaw(OriginalTable - sizeof(uint64), Entries.data(), Entries.size() * sizeof(uint64)))
+    {
+        return InvalidRemoteAddress;
+    }
+
+    const FRemoteAddress Copy = Arena->AllocateAndWrite(Entries.data(), Entries.size() * sizeof(uint64), 16);
+    if (Copy == InvalidRemoteAddress)
+    {
+        return InvalidRemoteAddress;
+    }
+
+    const FRemoteAddress ShadowTable = Copy + sizeof(uint64);
+    if (!Memory->Write<uint64>(Object, ShadowTable))
+    {
+        return InvalidRemoteAddress;
+    }
+
+    FShadowVirtualTable Shadow;
+    Shadow.Object = Object;
+    Shadow.OriginalTable = OriginalTable;
+    Shadow.ShadowTable = ShadowTable;
+    ShadowVirtualTables.push_back(Shadow);
+    return ShadowTable;
+}
+
+void FGameThreadBridge::RestoreShadowVirtualTables()
+{
+    for (const FShadowVirtualTable& Shadow : ShadowVirtualTables)
+    {
+        if (Memory->ReadPointer(Shadow.Object) == Shadow.ShadowTable)
+        {
+            Memory->Write<uint64>(Shadow.Object, Shadow.OriginalTable);
+        }
+    }
+
+    ShadowVirtualTables.clear();
+}
+
+bool FGameThreadBridge::InstallVirtualPrologueCall(FRemoteAddress Object, int32 VirtualIndex, FRemoteAddress RoutineAddress)
+{
+    if (!IsInitialized() || Object == InvalidRemoteAddress || RoutineAddress == InvalidRemoteAddress || VirtualIndex < 0 ||
+        VirtualIndex >= FBridgeLayout::ShadowVirtualTableEntries)
+    {
+        return false;
+    }
+
+    const FRemoteAddress OriginalTable = Memory->ReadPointer(Object);
+    const FRemoteAddress SlotOffset = static_cast<FRemoteAddress>(VirtualIndex) * sizeof(uint64);
+    const FRemoteAddress OriginalFunction = Memory->ReadPointer(OriginalTable + SlotOffset);
+    if (OriginalFunction == InvalidRemoteAddress || OriginalFunction == 0)
+    {
+        UE_LOG_ERROR("Bridge", "Virtual slot " + std::to_string(VirtualIndex) + " of " + FStringConv::ToHex(Object) + " holds no function");
         return false;
     }
 
     const FRemoteAddress StubAddress = Arena->AllocateZeroed(FBridgeLayout::ReservedStubSize, 16);
-    if (StubAddress == InvalidRemoteAddress)
+    if (StubAddress == InvalidRemoteAddress || !EmitPrologueCallStub(StubAddress, RoutineAddress, OriginalFunction))
     {
-        return false;
-    }
-
-    if (!GameThreadPumpDetour.Prepare(*Memory, *Arena, TargetFunction))
-    {
-        UE_LOG_ERROR("Bridge", "Failed to prepare the game thread pump detour on " + FStringConv::ToHex(TargetFunction));
-        return false;
-    }
-
-    if (!EmitPrologueCallStub(StubAddress, PumpRoutineAddress, GameThreadPumpDetour.GetTrampolineAddress()))
-    {
-        UE_LOG_ERROR("Bridge", "Failed to emit the game thread pump stub");
+        UE_LOG_ERROR("Bridge", "Failed to emit a prologue call for virtual slot " + std::to_string(VirtualIndex));
         return false;
     }
 
     Memory->FlushInstructionCacheRange(StubAddress, FBridgeLayout::ReservedStubSize);
 
-    if (!GameThreadPumpDetour.Activate(*Memory, StubAddress))
+    const FRemoteAddress ShadowTable = AcquireShadowVirtualTable(Object);
+    if (ShadowTable == InvalidRemoteAddress || !Memory->Write<uint64>(ShadowTable + SlotOffset, StubAddress))
     {
-        UE_LOG_ERROR("Bridge", "Failed to detour " + FStringConv::ToHex(TargetFunction) + " for the game thread pump");
+        UE_LOG_ERROR("Bridge", "Failed to redirect virtual slot " + std::to_string(VirtualIndex) + " of " + FStringConv::ToHex(Object));
         return false;
     }
 
-    UE_LOG_DISPLAY("Bridge", "Game thread pump installed on " + FStringConv::ToHex(TargetFunction));
+    UE_LOG_DISPLAY("Bridge", "Redirected virtual slot " + std::to_string(VirtualIndex) + " of " + FStringConv::ToHex(Object));
     return true;
 }
 
-bool FGameThreadBridge::InstallPrologueCall(FRemoteAddress TargetFunction, FRemoteAddress RoutineAddress)
+bool FGameThreadBridge::InstallGameThreadPump(FRemoteAddress Object, int32 VirtualIndex)
 {
-    if (!IsInitialized() || TargetFunction == InvalidRemoteAddress || RoutineAddress == InvalidRemoteAddress)
+    if (bGameThreadPumpInstalled || !InstallVirtualPrologueCall(Object, VirtualIndex, PumpRoutineAddress))
     {
         return false;
     }
 
-    const FRemoteAddress StubAddress = Arena->AllocateZeroed(FBridgeLayout::ReservedStubSize, 16);
-    if (StubAddress == InvalidRemoteAddress)
-    {
-        return false;
-    }
-
-    FRemoteDetour Detour;
-    if (!Detour.Prepare(*Memory, *Arena, TargetFunction) || !EmitPrologueCallStub(StubAddress, RoutineAddress, Detour.GetTrampolineAddress()))
-    {
-        UE_LOG_ERROR("Bridge", "Failed to prepare a prologue call on " + FStringConv::ToHex(TargetFunction));
-        return false;
-    }
-
-    Memory->FlushInstructionCacheRange(StubAddress, FBridgeLayout::ReservedStubSize);
-
-    if (!Detour.Activate(*Memory, StubAddress))
-    {
-        UE_LOG_ERROR("Bridge", "Failed to detour " + FStringConv::ToHex(TargetFunction) + " for a prologue call");
-        return false;
-    }
-
-    ConstantHooks.push_back(std::move(Detour));
-
-    UE_LOG_DISPLAY("Bridge", "Installed prologue call on " + FStringConv::ToHex(TargetFunction));
+    bGameThreadPumpInstalled = true;
     return true;
 }
 
@@ -414,42 +477,6 @@ FRemoteAddress FGameThreadBridge::EmitRoutine(FX64Emitter& Emitter)
 
     Memory->FlushInstructionCacheRange(RoutineAddress, Emitter.GetSize());
     return RoutineAddress;
-}
-
-bool FGameThreadBridge::InstallConstantHook(FRemoteAddress TargetFunction, uint64 ReturnValue)
-{
-    if (!IsInitialized() || TargetFunction == InvalidRemoteAddress)
-    {
-        return false;
-    }
-
-    const FRemoteAddress StubAddress = Arena->AllocateZeroed(FBridgeLayout::ReservedStubSize, 16);
-    if (StubAddress == InvalidRemoteAddress)
-    {
-        return false;
-    }
-
-    FX64Emitter Emitter;
-    Emitter.MoveRegisterImmediate(EX64Register::Rax, ReturnValue);
-    Emitter.EmitReturn();
-
-    if (!Emitter.Finalize() || !Memory->WriteRaw(StubAddress, Emitter.GetBytes().data(), Emitter.GetBytes().size()))
-    {
-        return false;
-    }
-
-    FRemoteDetour Detour;
-    if (!Detour.Install(*Memory, *Arena, TargetFunction, StubAddress))
-    {
-        UE_LOG_ERROR("Bridge", "Failed to detour " + FStringConv::ToHex(TargetFunction) + " with a constant return");
-        return false;
-    }
-
-    Memory->FlushInstructionCacheRange(StubAddress, Emitter.GetBytes().size());
-    ConstantHooks.push_back(std::move(Detour));
-
-    UE_LOG_DISPLAY("Bridge", "Installed constant return hook on " + FStringConv::ToHex(TargetFunction));
-    return true;
 }
 
 int32 FGameThreadBridge::AcquireFreeChannel() const
@@ -482,53 +509,6 @@ void FGameThreadBridge::ActivateRegistration(int32 ChannelIndex, EHookDispatchMo
     Registration.ChannelAddress = ChannelAddress;
     Registration.StubAddress = StubAddress;
     Registration.LastHandledSequence = 0;
-}
-
-int32 FGameThreadBridge::InstallHook(FRemoteAddress TargetFunction, EHookDispatchMode Mode, FHookHandler Handler)
-{
-    if (!IsInitialized() || TargetFunction == InvalidRemoteAddress)
-    {
-        return InvalidIndex;
-    }
-
-    const int32 ChannelIndex = AcquireFreeChannel();
-    if (ChannelIndex == InvalidIndex)
-    {
-        return InvalidIndex;
-    }
-
-    const FRemoteAddress StubAddress = Arena->AllocateZeroed(FBridgeLayout::ReservedStubSize, 16);
-    if (StubAddress == InvalidRemoteAddress)
-    {
-        return InvalidIndex;
-    }
-
-    FHookRegistration& Registration = Hooks[static_cast<size_t>(ChannelIndex)];
-
-    if (!Registration.Detour.Prepare(*Memory, *Arena, TargetFunction))
-    {
-        UE_LOG_ERROR("Bridge", "Failed to prepare a detour for " + FStringConv::ToHex(TargetFunction));
-        return InvalidIndex;
-    }
-
-    if (!EmitHookStub(ChannelIndex, Mode, StubAddress, Registration.Detour.GetTrampolineAddress()))
-    {
-        return InvalidIndex;
-    }
-
-    Memory->FlushInstructionCacheRange(StubAddress, FBridgeLayout::ReservedStubSize);
-    ActivateRegistration(ChannelIndex, Mode, std::move(Handler), StubAddress);
-
-    if (!Registration.Detour.Activate(*Memory, StubAddress))
-    {
-        UE_LOG_ERROR("Bridge", "Failed to detour " + FStringConv::ToHex(TargetFunction));
-        Registration.bActive = false;
-        Registration.Handler = nullptr;
-        return InvalidIndex;
-    }
-
-    UE_LOG_DISPLAY("Bridge", "Installed hook channel " + std::to_string(ChannelIndex) + " on " + FStringConv::ToHex(TargetFunction));
-    return ChannelIndex;
 }
 
 int32 FGameThreadBridge::InstallPointerHook(FRemoteAddress PointerSlot, EHookDispatchMode Mode, FHookHandler Handler)
@@ -592,10 +572,6 @@ bool FGameThreadBridge::RemoveHook(int32 ChannelIndex)
     {
         Memory->Write<uint64>(Registration.PointerSlot, Registration.OriginalPointer);
     }
-    else
-    {
-        Registration.Detour.Uninstall(*Memory);
-    }
 
     Memory->Write<uint64>(Registration.ChannelAddress + FBridgeLayout::ChannelEnabled, 0);
 
@@ -615,17 +591,8 @@ void FGameThreadBridge::RemoveAllHooks()
         RemoveHook(Index);
     }
 
-    for (FRemoteDetour& Detour : ConstantHooks)
-    {
-        Detour.Uninstall(*Memory);
-    }
-
-    ConstantHooks.clear();
-
-    if (GameThreadPumpDetour.IsInstalled())
-    {
-        GameThreadPumpDetour.Uninstall(*Memory);
-    }
+    RestoreShadowVirtualTables();
+    bGameThreadPumpInstalled = false;
 }
 
 bool FGameThreadBridge::RewriteHookArgument(int32 ChannelIndex, int32 ArgumentIndex, uint64 Value) const

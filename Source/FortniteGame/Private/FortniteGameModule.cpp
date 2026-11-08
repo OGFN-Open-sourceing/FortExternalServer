@@ -7,10 +7,9 @@ FFortniteGameModule& FFortniteGameModule::Get()
     return Module;
 }
 
-bool FFortniteGameModule::StartupModule(FEngineRuntime& InEngineRuntime, const FNetworkHooks& InNetworkHooks, const FAthenaMatchSettings& InMatchSettings)
+bool FFortniteGameModule::StartupModule(FEngineRuntime& InEngineRuntime, const FAthenaMatchSettings& InMatchSettings)
 {
     EngineRuntime = &InEngineRuntime;
-    NetworkHooks = &InNetworkHooks;
     MatchSettings = InMatchSettings;
 
     NativeOverrides.Initialize(EngineRuntime->GetUnrealRuntime());
@@ -38,11 +37,6 @@ FEngineRuntime& FFortniteGameModule::GetEngineRuntime() const
 const FAthenaMatchSettings& FFortniteGameModule::GetMatchSettings() const
 {
     return MatchSettings;
-}
-
-const FNetworkHooks& FFortniteGameModule::GetNetworkHooks() const
-{
-    return *NetworkHooks;
 }
 
 bool FFortniteGameModule::RegisterNativeOverrides()

@@ -6,7 +6,7 @@
 struct FEngineFunctions
 {
     FRemoteAddress NetDriverTickFlush = InvalidRemoteAddress;
-    FRemoteAddress CollectGarbage = InvalidRemoteAddress;
+    FRemoteAddress EngineTick = InvalidRemoteAddress;
     FRemoteAddress AbilitySystemGiveAbility = InvalidRemoteAddress;
     FRemoteAddress AbilitySystemInternalTryActivateAbility = InvalidRemoteAddress;
     FRemoteAddress GameplayAbilitySpecConstructor = InvalidRemoteAddress;
@@ -52,7 +52,7 @@ public:
 
     FObjectHandle SpawnObject(const FObjectHandle& ClassHandle, const FObjectHandle& Outer) const;
 
-    void InvalidateCachedEngine();
+    void SetEngine(const FObjectHandle& Engine);
 
 private:
     FUnrealRuntime* UnrealRuntime = nullptr;

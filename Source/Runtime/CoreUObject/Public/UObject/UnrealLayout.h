@@ -64,6 +64,8 @@ namespace FUnrealLayout
     inline constexpr int32 FScriptArray_ArrayMax = 0x0C;
     inline constexpr int32 FScriptArray_Size = 0x10;
 
+    inline constexpr uint32 ObjectFlag_ClassDefaultObject = 0x00000010;
+
     inline constexpr uint32 FunctionFlag_Native = 0x00000400;
     inline constexpr uint32 FunctionFlag_Net = 0x00000040;
     inline constexpr uint32 FunctionFlag_NetRequest = 0x00080000;

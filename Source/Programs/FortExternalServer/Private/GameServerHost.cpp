@@ -30,7 +30,7 @@ namespace
     {
         FEngineFunctions Functions;
         Functions.NetDriverTickFlush = ToImageAddress(Image, Offsets.NetDriverTickFlush);
-        Functions.CollectGarbage = ToImageAddress(Image, Offsets.CollectGarbage);
+        Functions.EngineTick = ToImageAddress(Image, Offsets.EngineTick);
         Functions.AbilitySystemGiveAbility = ToImageAddress(Image, Offsets.AbilitySystemGiveAbility);
         Functions.AbilitySystemInternalTryActivateAbility = ToImageAddress(Image, Offsets.AbilitySystemInternalTryActivateAbility);
         Functions.GameplayAbilitySpecConstructor = ToImageAddress(Image, Offsets.GameplayAbilitySpecConstructor);
@@ -52,6 +52,9 @@ namespace
     constexpr uint64 AthenaWorldTimeoutMilliseconds = 300000;
     constexpr uint64 StatusIntervalMilliseconds = 15000;
     constexpr uint64 PumpWarmupTimeoutMilliseconds = 60000;
+    constexpr uint32 EngineScanIntervalMilliseconds = 500;
+    constexpr uint32 RedirectLoadTimeoutMilliseconds = 30000;
+    constexpr uint64 GameThreadHoldTimeoutMilliseconds = 30000;
     constexpr uint64 AttachTimeoutMilliseconds = 180000;
     constexpr uint64 ImageReadyTimeoutMilliseconds = 120000;
     constexpr size_t MinimumExecutablePopulationPercent = 98;
@@ -101,6 +104,30 @@ bool FGameServerHost::AttachToGameProcess()
         return false;
     }
 
+    return LoadRedirectLibrary();
+}
+
+bool FGameServerHost::LoadRedirectLibrary()
+{
+    const std::wstring LibraryPath = Settings.GetRedirectLibraryPath(FPaths::GetExecutableDirectory());
+    if (LibraryPath.empty())
+    {
+        return true;
+    }
+
+    if (!FPaths::FileExists(LibraryPath))
+    {
+        UE_LOG_ERROR("Host", "The redirect library was not found at " + FStringConv::ToNarrow(LibraryPath));
+        return false;
+    }
+
+    if (!Process.LoadLibraryInto(LibraryPath, RedirectLoadTimeoutMilliseconds))
+    {
+        UE_LOG_ERROR("Host", "The redirect library failed to load into the game process");
+        return false;
+    }
+
+    UE_LOG_DISPLAY("Host", "Loaded redirect library " + FStringConv::ToNarrow(LibraryPath));
     return true;
 }
 
@@ -247,7 +274,28 @@ bool FGameServerHost::InstallHooks()
 {
     Stage = EHostStage::InstallingHooks;
 
-    if (!Bridge.InstallGameThreadPump(UnrealRuntime.GetGlobals().ProcessEvent))
+    int32 EngineTickIndex = InvalidIndex;
+    FObjectHandle Engine;
+    const uint64 Deadline = FWindowsPlatform::GetTimeMilliseconds() + BootTimeoutMilliseconds;
+
+    while (!Engine)
+    {
+        if (!Process.IsAlive() || FWindowsPlatform::GetTimeMilliseconds() >= Deadline)
+        {
+            UE_LOG_ERROR("Host", "No engine object implements UFortEngine::Tick");
+            return false;
+        }
+
+        Engine = UnrealRuntime.FindInstanceImplementingVirtual(EngineRuntime.GetFunctions().EngineTick, EngineTickIndex);
+        if (!Engine)
+        {
+            FWindowsPlatform::SleepMilliseconds(EngineScanIntervalMilliseconds);
+        }
+    }
+
+    EngineRuntime.SetEngine(Engine);
+
+    if (!Bridge.InstallGameThreadPump(Engine.GetAddress(), EngineTickIndex))
     {
         return false;
     }
@@ -256,19 +304,11 @@ bool FGameServerHost::InstallHooks()
 
     if (!Bridge.WaitForGameThreadPump(PumpWarmupTimeoutMilliseconds))
     {
-        UE_LOG_ERROR("Host", "The game thread never reached the bridge pump through ProcessEvent");
+        UE_LOG_ERROR("Host", "The game thread never reached the bridge pump through UFortEngine::Tick");
         return false;
     }
 
     UE_LOG_DISPLAY("Host", "Game thread pump is live");
-    for (int32 Tick = 0; Tick < 900 && Process.IsAlive(); ++Tick)
-    {
-        FWindowsPlatform::SleepMilliseconds(100);
-    }
-    DWORD ExperimentExitCode = 0;
-    ::GetExitCodeProcess(static_cast<HANDLE>(Process.GetProcessHandle()), &ExperimentExitCode);
-    UE_LOG_DISPLAY("Host", "Experiment idle window over, exit code " + FStringConv::ToHex(ExperimentExitCode) + " seq " + std::to_string(Bridge.GetPumpSequence()));
-
     return true;
 }
 
@@ -285,8 +325,7 @@ bool FGameServerHost::WaitForMainMenu()
 
         Bridge.ServicePendingHooks();
 
-        const FObjectHandle LocalPlayer = EngineRuntime.GetLocalPlayer(0);
-        if (LocalPlayer && LocalPlayer.GetObjectProperty("PlayerController"))
+        if (HasLocalPlayerController())
         {
             UE_LOG_DISPLAY("Host", "The game reached the front end");
             return true;
@@ -302,7 +341,22 @@ bool FGameServerHost::WaitForMainMenu()
 bool FGameServerHost::BeginTravel()
 {
     Stage = EHostStage::TravellingToAthena;
+    const FGameThreadHoldScope Hold(Bridge, GameThreadHoldTimeoutMilliseconds);
     return FFortniteGameModule::Get().TravelToAthena();
+}
+
+bool FGameServerHost::HasLocalPlayerController()
+{
+    const FGameThreadHoldScope Hold(Bridge, GameThreadHoldTimeoutMilliseconds);
+    const FObjectHandle LocalPlayer = EngineRuntime.GetLocalPlayer(0);
+    return LocalPlayer && LocalPlayer.GetObjectProperty("PlayerController");
+}
+
+bool FGameServerHost::IsAthenaWorldListening()
+{
+    const FGameThreadHoldScope Hold(Bridge, GameThreadHoldTimeoutMilliseconds);
+    const UWorld World = EngineRuntime.GetWorld();
+    return World && World.GetAuthorityGameMode() && World.GetNetDriver();
 }
 
 bool FGameServerHost::WaitForAthenaWorld()
@@ -320,13 +374,11 @@ bool FGameServerHost::WaitForAthenaWorld()
 
         Bridge.ServicePendingHooks();
 
-        EngineRuntime.InvalidateCachedEngine();
-
-        const UWorld World = EngineRuntime.GetWorld();
-        if (World && World.GetAuthorityGameMode() && World.GetNetDriver())
+        if (IsAthenaWorldListening())
         {
             UE_LOG_DISPLAY("Host", "Athena world is live and listening");
-            return true;
+            const FGameThreadHoldScope Hold(Bridge, GameThreadHoldTimeoutMilliseconds);
+            return NetworkHooks.Install(EngineRuntime);
         }
 
         FWindowsPlatform::SleepMilliseconds(500);
@@ -381,7 +433,7 @@ bool FGameServerHost::Start()
         return false;
     }
 
-    if (!FFortniteGameModule::Get().StartupModule(EngineRuntime, NetworkHooks, Settings.GetMatch()))
+    if (!FFortniteGameModule::Get().StartupModule(EngineRuntime, Settings.GetMatch()))
     {
         return false;
     }

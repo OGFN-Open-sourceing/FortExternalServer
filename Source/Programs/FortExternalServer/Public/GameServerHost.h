@@ -43,6 +43,12 @@ private:
 
     bool AttachToGameProcess();
 
+    bool LoadRedirectLibrary();
+
+    bool HasLocalPlayerController();
+
+    bool IsAthenaWorldListening();
+
     bool LoadPrimaryModuleImage();
 
     bool InitialiseRemoteRuntime();

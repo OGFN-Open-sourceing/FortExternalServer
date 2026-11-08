@@ -2,6 +2,7 @@
 
 #include <filesystem>
 #include <fstream>
+#include <unordered_set>
 
 namespace
 {
@@ -439,6 +440,53 @@ FObjectHandle FUnrealRuntime::FindOrLoadObject(std::string_view ObjectPath, cons
 FObjectHandle FUnrealRuntime::GetClassDefaultObject(std::string_view ClassName) const
 {
     return FindObject(std::string("Default__") + std::string(ClassName));
+}
+
+FObjectHandle FUnrealRuntime::FindInstanceImplementingVirtual(FRemoteAddress Function, int32& OutVirtualIndex) const
+{
+    OutVirtualIndex = InvalidIndex;
+
+    const FRemoteMemory& Memory = Bridge->GetMemory();
+    std::unordered_set<FRemoteAddress> RejectedTables;
+    FRemoteAddress MatchingTable = InvalidRemoteAddress;
+
+    const int32 Count = GetObjectCount();
+    for (int32 Index = 0; Index < Count; ++Index)
+    {
+        const FObjectHandle Object = GetObjectByIndex(Index);
+        if (!Object)
+        {
+            continue;
+        }
+
+        const FRemoteAddress Table = Memory.ReadPointer(Object.GetAddress() + FUnrealLayout::UObject_VirtualTable);
+        if (!Image->ContainsAddress(Table) || RejectedTables.count(Table) != 0)
+        {
+            continue;
+        }
+
+        if (Table != MatchingTable)
+        {
+            const int32 VirtualIndex = Bridge->FindVirtualIndex(Object.GetAddress(), Function);
+            if (VirtualIndex == InvalidIndex)
+            {
+                RejectedTables.insert(Table);
+                continue;
+            }
+
+            MatchingTable = Table;
+            OutVirtualIndex = VirtualIndex;
+        }
+
+        const uint32 ObjectFlags = Memory.Read<uint32>(Object.GetAddress() + FUnrealLayout::UObject_ObjectFlags);
+        if ((ObjectFlags & FUnrealLayout::ObjectFlag_ClassDefaultObject) == 0)
+        {
+            return Object;
+        }
+    }
+
+    OutVirtualIndex = InvalidIndex;
+    return FObjectHandle();
 }
 
 std::vector<FObjectHandle> FUnrealRuntime::FindObjectsOfClass(const FObjectHandle& ClassHandle, int32 Limit) const

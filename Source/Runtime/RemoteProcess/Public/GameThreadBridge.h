@@ -2,7 +2,6 @@
 
 #include "Runtime/Core/Public/CoreMinimal.h"
 #include "Runtime/RemoteProcess/Public/RemoteAllocation.h"
-#include "Runtime/RemoteProcess/Public/RemoteDetour.h"
 #include "Runtime/RemoteProcess/Public/RemoteMemory.h"
 
 #include <functional>
@@ -40,6 +39,7 @@ namespace FBridgeLayout
     inline constexpr int32 MaximumCommandArguments = 8;
     inline constexpr int32 IntegerArgumentCount = 4;
     inline constexpr size_t ReservedStubSize = 512;
+    inline constexpr int32 ShadowVirtualTableEntries = 0x400;
 }
 
 enum class EHookDispatchMode : uint8
@@ -78,15 +78,13 @@ public:
 
     bool IsInitialized() const;
 
-    bool InstallGameThreadPump(FRemoteAddress TargetFunction);
+    int32 FindVirtualIndex(FRemoteAddress Object, FRemoteAddress Function) const;
 
-    int32 InstallHook(FRemoteAddress TargetFunction, EHookDispatchMode Mode, FHookHandler Handler);
+    bool InstallGameThreadPump(FRemoteAddress Object, int32 VirtualIndex);
+
+    bool InstallVirtualPrologueCall(FRemoteAddress Object, int32 VirtualIndex, FRemoteAddress RoutineAddress);
 
     int32 InstallPointerHook(FRemoteAddress PointerSlot, EHookDispatchMode Mode, FHookHandler Handler);
-
-    bool InstallConstantHook(FRemoteAddress TargetFunction, uint64 ReturnValue);
-
-    bool InstallPrologueCall(FRemoteAddress TargetFunction, FRemoteAddress RoutineAddress);
 
     FRemoteAddress EmitRoutine(FX64Emitter& Emitter);
 
@@ -119,13 +117,23 @@ private:
         bool bDispatching = false;
         EHookDispatchMode Mode = EHookDispatchMode::PumpOnly;
         FHookHandler Handler;
-        FRemoteDetour Detour;
         FRemoteAddress ChannelAddress = InvalidRemoteAddress;
         FRemoteAddress StubAddress = InvalidRemoteAddress;
         FRemoteAddress PointerSlot = InvalidRemoteAddress;
         FRemoteAddress OriginalPointer = InvalidRemoteAddress;
         uint64 LastHandledSequence = 0;
     };
+
+    struct FShadowVirtualTable
+    {
+        FRemoteAddress Object = InvalidRemoteAddress;
+        FRemoteAddress OriginalTable = InvalidRemoteAddress;
+        FRemoteAddress ShadowTable = InvalidRemoteAddress;
+    };
+
+    FRemoteAddress AcquireShadowVirtualTable(FRemoteAddress Object);
+
+    void RestoreShadowVirtualTables();
 
     int32 AcquireFreeChannel() const;
 
@@ -149,8 +157,8 @@ private:
     FRemoteAddress ChannelArrayAddress = InvalidRemoteAddress;
     FRemoteAddress PumpRoutineAddress = InvalidRemoteAddress;
     std::vector<FHookRegistration> Hooks;
-    std::vector<FRemoteDetour> ConstantHooks;
-    FRemoteDetour GameThreadPumpDetour;
+    std::vector<FShadowVirtualTable> ShadowVirtualTables;
+    bool bGameThreadPumpInstalled = false;
     uint64 NextCommandTicket = 0;
     uint64 HoldDepth = 0;
 };

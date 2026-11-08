@@ -59,7 +59,7 @@ namespace
         Profile.EngineOffsets.FNameConstructor = 0x01327FE0;
 
         Profile.EngineFunctions.NetDriverTickFlush = 0x022B6AB0;
-        Profile.EngineFunctions.CollectGarbage = 0x025151D0;
+        Profile.EngineFunctions.EngineTick = 0x00BE4D40;
         Profile.EngineFunctions.AbilitySystemGiveAbility = 0x00527580;
         Profile.EngineFunctions.AbilitySystemInternalTryActivateAbility = 0x00528B50;
         Profile.EngineFunctions.GameplayAbilitySpecConstructor = 0x0103DA30;

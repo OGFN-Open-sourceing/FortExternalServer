@@ -182,8 +182,6 @@ ENativeOverrideResult AFortGameModeAthena::execReadyToStartMatch(const FNativeFu
     GameMode.ChangeGameSessionMaxPlayers(Settings.MaxPlayers);
     GameMode.SetWorldIsReady(true);
 
-    FFortniteGameModule::Get().GetNetworkHooks().DisableGarbageCollection();
-
     UE_LOG_DISPLAY("Athena", "World is ready, waiting for " + std::to_string(Settings.MinimumPlayersToStart) + " players");
 
     Call.SetResult<bool>(false);

@@ -146,6 +146,43 @@ bool FProcessAttachment::ResumeMainThread()
     return ::ResumeThread(MainThreadHandle) != static_cast<DWORD>(-1);
 }
 
+bool FProcessAttachment::LoadLibraryInto(const std::wstring& LibraryPath, uint32 TimeoutMilliseconds)
+{
+    if (ProcessHandle == nullptr)
+    {
+        return false;
+    }
+
+    const HMODULE Kernel32 = ::GetModuleHandleW(L"kernel32.dll");
+    const FARPROC LoadLibraryAddress = Kernel32 != nullptr ? ::GetProcAddress(Kernel32, "LoadLibraryW") : nullptr;
+    if (LoadLibraryAddress == nullptr)
+    {
+        return false;
+    }
+
+    const size_t PathBytes = (LibraryPath.size() + 1) * sizeof(wchar_t);
+    void* const RemotePath = ::VirtualAllocEx(ProcessHandle, nullptr, PathBytes, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+    if (RemotePath == nullptr)
+    {
+        return false;
+    }
+
+    bool bLoaded = false;
+    if (::WriteProcessMemory(ProcessHandle, RemotePath, LibraryPath.c_str(), PathBytes, nullptr) != FALSE)
+    {
+        const HANDLE Thread = ::CreateRemoteThread(ProcessHandle, nullptr, 0, reinterpret_cast<LPTHREAD_START_ROUTINE>(reinterpret_cast<void*>(LoadLibraryAddress)), RemotePath, 0, nullptr);
+        if (Thread != nullptr)
+        {
+            DWORD ExitCode = 0;
+            bLoaded = ::WaitForSingleObject(Thread, TimeoutMilliseconds) == WAIT_OBJECT_0 && ::GetExitCodeThread(Thread, &ExitCode) != FALSE && ExitCode != 0;
+            ::CloseHandle(Thread);
+        }
+    }
+
+    ::VirtualFreeEx(ProcessHandle, RemotePath, 0, MEM_RELEASE);
+    return bLoaded;
+}
+
 void FProcessAttachment::Terminate()
 {
     if (ProcessHandle != nullptr)

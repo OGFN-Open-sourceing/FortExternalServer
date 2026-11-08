@@ -3,7 +3,7 @@
 
 std::vector<std::pair<FRemoteAddress, const char*>> FEngineFunctions::GetAllEntries() const
 {
-    return { { NetDriverTickFlush, "UNetDriver::TickFlush" }, { CollectGarbage, "CollectGarbage" },
+    return { { NetDriverTickFlush, "UNetDriver::TickFlush" }, { EngineTick, "UFortEngine::Tick" },
         { AbilitySystemGiveAbility, "UAbilitySystemComponent::GiveAbility" },
         { AbilitySystemInternalTryActivateAbility, "UAbilitySystemComponent::InternalTryActivateAbility" },
         { GameplayAbilitySpecConstructor, "FGameplayAbilitySpec::FGameplayAbilitySpec" } };
@@ -88,9 +88,9 @@ FObjectHandle FEngineRuntime::GetEngine() const
     return FObjectHandle();
 }
 
-void FEngineRuntime::InvalidateCachedEngine()
+void FEngineRuntime::SetEngine(const FObjectHandle& Engine)
 {
-    CachedEngineAddress = InvalidRemoteAddress;
+    CachedEngineAddress = Engine.GetAddress();
 }
 
 FObjectHandle FEngineRuntime::GetGameViewportClient() const

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Runtime/Engine/Public/EngineRuntime.h"
+#include "Runtime/Engine/Classes/Engine/NetDriver.h"
 
 class FNetworkHooks
 {
@@ -11,10 +12,8 @@ public:
 
     bool IsInstalled() const;
 
-    void DisableGarbageCollection() const;
-
 private:
-    bool InstallReplicationTick();
+    bool InstallReplicationTick(const UNetDriver& NetDriver);
 
     FRemoteAddress EmitServerReplicateActorsRoutine() const;
 

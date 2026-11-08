@@ -74,6 +74,8 @@ public:
 
     std::vector<FObjectHandle> FindObjectsByNamePrefix(std::string_view Prefix, int32 Limit) const;
 
+    FObjectHandle FindInstanceImplementingVirtual(FRemoteAddress Function, int32& OutVirtualIndex) const;
+
     FName FindName(std::string_view Value) const;
 
     FName CreateName(std::string_view Value) const;

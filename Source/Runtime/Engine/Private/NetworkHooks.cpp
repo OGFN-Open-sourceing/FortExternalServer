@@ -1,4 +1,5 @@
 #include "Runtime/Engine/Public/NetworkHooks.h"
+#include "Runtime/Engine/Classes/Engine/World.h"
 #include "Runtime/RemoteProcess/Public/X64Emitter.h"
 
 namespace
@@ -15,7 +16,14 @@ bool FNetworkHooks::Install(FEngineRuntime& InEngineRuntime)
 
     EngineRuntime = &InEngineRuntime;
 
-    if (!InstallReplicationTick())
+    const UNetDriver NetDriver = EngineRuntime->GetWorld().GetNetDriver();
+    if (!NetDriver)
+    {
+        UE_LOG_ERROR("Network", "The world has no net driver to replicate through");
+        return false;
+    }
+
+    if (!InstallReplicationTick(NetDriver))
     {
         return false;
     }
@@ -61,7 +69,7 @@ FRemoteAddress FNetworkHooks::EmitServerReplicateActorsRoutine() const
     return EngineRuntime->GetUnrealRuntime().GetBridge().EmitRoutine(Emitter);
 }
 
-bool FNetworkHooks::InstallReplicationTick()
+bool FNetworkHooks::InstallReplicationTick(const UNetDriver& NetDriver)
 {
     const FEngineFunctions& Functions = EngineRuntime->GetFunctions();
     const FEngineNetworkLayout& Layout = EngineRuntime->GetNetworkLayout();
@@ -79,22 +87,20 @@ bool FNetworkHooks::InstallReplicationTick()
         return false;
     }
 
-    if (!EngineRuntime->GetUnrealRuntime().GetBridge().InstallPrologueCall(Functions.NetDriverTickFlush, Routine))
+    FGameThreadBridge& Bridge = EngineRuntime->GetUnrealRuntime().GetBridge();
+
+    const int32 TickFlushIndex = Bridge.FindVirtualIndex(NetDriver.GetAddress(), Functions.NetDriverTickFlush);
+    if (TickFlushIndex == InvalidIndex)
+    {
+        UE_LOG_ERROR("Network", "The net driver does not implement UNetDriver::TickFlush through its virtual table");
+        return false;
+    }
+
+    if (!Bridge.InstallVirtualPrologueCall(NetDriver.GetAddress(), TickFlushIndex, Routine))
     {
         return false;
     }
 
     UE_LOG_DISPLAY("Network", "UNetDriver::TickFlush now drives UReplicationDriver::ServerReplicateActors");
     return true;
-}
-
-void FNetworkHooks::DisableGarbageCollection() const
-{
-    const FRemoteAddress CollectGarbage = EngineRuntime->GetFunctions().CollectGarbage;
-    if (CollectGarbage == InvalidRemoteAddress)
-    {
-        return;
-    }
-
-    EngineRuntime->GetUnrealRuntime().GetBridge().InstallConstantHook(CollectGarbage, 0);
 }

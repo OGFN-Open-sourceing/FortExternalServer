@@ -105,6 +105,17 @@ std::wstring FServerSettings::GetGameExecutablePath(const std::wstring& BuildRoo
     return FPaths::Combine(BuildRoot, std::wstring(GameExecutableRelativePath));
 }
 
+std::wstring FServerSettings::GetRedirectLibraryPath(const std::wstring& ServerDirectory) const
+{
+    const std::wstring Library = FStringConv::ToWide(FConfiguration::RedirectLibrary);
+    if (Library.empty())
+    {
+        return Library;
+    }
+
+    return Library.find(L':') == std::wstring::npos ? FPaths::Combine(ServerDirectory, Library) : Library;
+}
+
 std::wstring FServerSettings::GetGameExecutableName() const
 {
     const std::wstring Normalized = FPaths::NormalizeSeparators(std::wstring(GameExecutableRelativePath));
