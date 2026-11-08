@@ -62,6 +62,9 @@
     <ClInclude Include="..\Source\FortniteGame\Public\Athena\FortGameModeAthena.h">
       <Filter>FortniteGame\Public\Athena</Filter>
     </ClInclude>
+    <ClInclude Include="..\Source\FortniteGame\Public\Athena\FortPoiManager.h">
+      <Filter>FortniteGame\Public\Athena</Filter>
+    </ClInclude>
     <ClInclude Include="..\Source\FortniteGame\Public\Athena\FortGameStateAthena.h">
       <Filter>FortniteGame\Public\Athena</Filter>
     </ClInclude>
@@ -212,6 +215,9 @@
       <Filter>FortniteGame\Private\Abilities</Filter>
     </ClCompile>
     <ClCompile Include="..\Source\FortniteGame\Private\Athena\FortGameModeAthena.cpp">
+      <Filter>FortniteGame\Private\Athena</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\FortniteGame\Private\Athena\FortPoiManager.cpp">
       <Filter>FortniteGame\Private\Athena</Filter>
     </ClCompile>
     <ClCompile Include="..\Source\FortniteGame\Private\Athena\FortGameStateAthena.cpp">

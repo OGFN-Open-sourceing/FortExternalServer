@@ -51,6 +51,8 @@ public:
 
     static ENativeOverrideResult execSpawnDefaultPawnFor(const FNativeFunctionCall& Call);
 
+    static void RemovePoiVolumesWithoutBrush(const FUnrealRuntime& Runtime);
+
     static ENativeOverrideResult execHandleStartingNewPlayer(const FNativeFunctionCall& Call);
 };
 

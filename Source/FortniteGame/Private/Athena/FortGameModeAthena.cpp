@@ -1,5 +1,7 @@
 #include "FortniteGame/Public/Athena/FortGameModeAthena.h"
+#include "FortniteGame/Public/Athena/FortPoiManager.h"
 #include "FortniteGame/Public/FortniteGameModule.h"
+#include "Runtime/Engine/Classes/Engine/World.h"
 #include "Runtime/Engine/Classes/Kismet/GameplayStatics.h"
 
 AFortGameStateAthena AFortGameModeAthena::GetGameState() const
@@ -237,6 +239,21 @@ ENativeOverrideResult AFortGameModeAthena::execSpawnDefaultPawnFor(const FNative
     return ENativeOverrideResult::Handled;
 }
 
+void AFortGameModeAthena::RemovePoiVolumesWithoutBrush(const FUnrealRuntime& Runtime)
+{
+    const UWorld World = FFortniteGameModule::Get().GetEngineRuntime().GetWorld();
+    const FObjectHandle PoiManagerClass = Runtime.FindOrLoadObject("/Script/FortniteGame.FortPoiManager");
+
+    for (const FObjectHandle& Actor : World.GetAllActorsOfClass(PoiManagerClass))
+    {
+        const int32 Removed = AFortPoiManager(Actor).RemoveVolumesWithoutBrush();
+        if (Removed > 0)
+        {
+            UE_LOG_DISPLAY("FortniteGame", Actor.GetName() + " skips " + std::to_string(Removed) + " POI volumes that have no brush component");
+        }
+    }
+}
+
 ENativeOverrideResult AFortGameModeAthena::execHandleStartingNewPlayer(const FNativeFunctionCall& Call)
 {
     struct FHandleStartingNewPlayerParameters
@@ -252,5 +269,6 @@ ENativeOverrideResult AFortGameModeAthena::execHandleStartingNewPlayer(const FNa
         Controller.EnsureWorldInventory();
     }
 
+    RemovePoiVolumesWithoutBrush(Call.GetRuntime());
     return ENativeOverrideResult::ContinueToOriginal;
 }

@@ -70,6 +70,7 @@
     <ClInclude Include="..\Source\FortniteGame\Public\Athena\AthenaMatchSettings.h" />
     <ClInclude Include="..\Source\FortniteGame\Public\Athena\FortGameModeAthena.h" />
     <ClInclude Include="..\Source\FortniteGame\Public\Athena\FortGameStateAthena.h" />
+    <ClInclude Include="..\Source\FortniteGame\Public\Athena\FortPoiManager.h" />
     <ClInclude Include="..\Source\FortniteGame\Public\Athena\FortPlaylistAthena.h" />
     <ClInclude Include="..\Source\FortniteGame\Public\Athena\Player\FortPlayerControllerAthena.h" />
     <ClInclude Include="..\Source\FortniteGame\Public\Athena\Player\FortPlayerPawnAthena.h" />
@@ -122,6 +123,7 @@
     <ClCompile Include="..\Source\FortniteGame\Private\Abilities\FortAbilitySet.cpp" />
     <ClCompile Include="..\Source\FortniteGame\Private\Athena\FortGameModeAthena.cpp" />
     <ClCompile Include="..\Source\FortniteGame\Private\Athena\FortGameStateAthena.cpp" />
+    <ClCompile Include="..\Source\FortniteGame\Private\Athena\FortPoiManager.cpp" />
     <ClCompile Include="..\Source\FortniteGame\Private\Athena\FortPlaylistAthena.cpp" />
     <ClCompile Include="..\Source\FortniteGame\Private\Athena\Player\FortPlayerControllerAthena.cpp" />
     <ClCompile Include="..\Source\FortniteGame\Private\Athena\Player\FortPlayerPawnAthena.cpp" />
