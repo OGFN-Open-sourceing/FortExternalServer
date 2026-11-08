@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <Filter Include="FortniteGame" />
@@ -44,6 +44,10 @@
     <Filter Include="Runtime\Engine\Classes\Kismet" />
     <Filter Include="Runtime\Engine\Private" />
     <Filter Include="Runtime\Engine\Public" />
+    <Filter Include="Runtime\Online" />
+    <Filter Include="Runtime\Online\HTTP" />
+    <Filter Include="Runtime\Online\HTTP\Private" />
+    <Filter Include="Runtime\Online\HTTP\Public" />
     <Filter Include="Runtime\RemoteProcess" />
     <Filter Include="Runtime\RemoteProcess\Private" />
     <Filter Include="Runtime\RemoteProcess\Public" />
@@ -90,6 +94,12 @@
     </ClInclude>
     <ClInclude Include="..\Source\Programs\FortExternalServer\Public\FortExternalServerMain.h">
       <Filter>Programs\FortExternalServer\Public</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\Programs\FortExternalServer\Public\GameLogMirror.h">
+      <Filter>Programs\FortExternalServer\Public</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\Runtime\Online\HTTP\Public\HttpRedirect.h">
+      <Filter>Runtime\Online\HTTP\Public</Filter>
     </ClInclude>
     <ClInclude Include="..\Source\Programs\FortExternalServer\Public\GameServerHost.h">
       <Filter>Programs\FortExternalServer\Public</Filter>
@@ -230,6 +240,12 @@
     </ClCompile>
     <ClCompile Include="..\Source\Programs\FortExternalServer\Private\FortExternalServerMain.cpp">
       <Filter>Programs\FortExternalServer\Private</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\Programs\FortExternalServer\Private\GameLogMirror.cpp">
+      <Filter>Programs\FortExternalServer\Private</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\Runtime\Online\HTTP\Private\HttpRedirect.cpp">
+      <Filter>Runtime\Online\HTTP\Private</Filter>
     </ClCompile>
     <ClCompile Include="..\Source\Programs\FortExternalServer\Private\GameServerHost.cpp">
       <Filter>Programs\FortExternalServer\Private</Filter>

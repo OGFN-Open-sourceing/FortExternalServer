@@ -1,12 +1,14 @@
 #include "Runtime/Engine/Public/EngineRuntime.h"
 #include "Runtime/Engine/Classes/Engine/World.h"
+#include <cstring>
 
 std::vector<std::pair<FRemoteAddress, const char*>> FEngineFunctions::GetAllEntries() const
 {
     return { { NetDriverTickFlush, "UNetDriver::TickFlush" }, { EngineTick, "UFortEngine::Tick" },
         { AbilitySystemGiveAbility, "UAbilitySystemComponent::GiveAbility" },
         { AbilitySystemInternalTryActivateAbility, "UAbilitySystemComponent::InternalTryActivateAbility" },
-        { GameplayAbilitySpecConstructor, "FGameplayAbilitySpec::FGameplayAbilitySpec" } };
+        { GameplayAbilitySpecConstructor, "FGameplayAbilitySpec::FGameplayAbilitySpec" }, { EngineCreateNetDriver, "UEngine::CreateNetDriver" },
+        { NetDriverSetWorld, "UNetDriver::SetWorld" }, { GameSessionKickPlayer, "AFortGameSession::KickPlayer" } };
 }
 
 bool FEngineRuntime::Initialize(FUnrealRuntime& InUnrealRuntime, const FEngineGlobals& InGlobals, const FEngineFunctions& InFunctions, const FEngineNetworkLayout& InNetworkLayout)
@@ -170,6 +172,75 @@ bool FEngineRuntime::RemoveLocalPlayers() const
     }
 
     return UnrealRuntime->GetMemory().Write<int32>(LocalPlayers + FUnrealLayout::FScriptArray_ArrayNum, 0);
+}
+
+bool FEngineRuntime::Listen(const UWorld& World, int32 Port) const
+{
+    if (Functions.EngineCreateNetDriver == InvalidRemoteAddress || Functions.NetDriverSetWorld == InvalidRemoteAddress ||
+        NetworkLayout.InitListenVirtualIndex == InvalidIndex)
+    {
+        UE_LOG_ERROR("Engine", "UEngine::CreateNetDriver, UNetDriver::SetWorld or UNetDriver::InitListen is missing from the build profile");
+        return false;
+    }
+
+    if (World.GetNetDriver())
+    {
+        UE_LOG_ERROR("Engine", "NetDriver already exists");
+        return false;
+    }
+
+    const FObjectHandle Engine = GetEngine();
+    if (!Engine)
+    {
+        return false;
+    }
+
+    FGameThreadBridge& Bridge = UnrealRuntime->GetBridge();
+    const FRemoteMemory& Memory = UnrealRuntime->GetMemory();
+
+    const FName GameNetDriverName = UnrealRuntime->CreateName("GameNetDriver");
+    uint64 PackedName = 0;
+    std::memcpy(&PackedName, &GameNetDriverName, sizeof(PackedName));
+
+    const FObjectHandle NetDriver = UnrealRuntime->MakeHandle(Bridge.CallFunction(Functions.EngineCreateNetDriver, { Engine.GetAddress(), World.GetAddress(), PackedName }));
+    if (!NetDriver)
+    {
+        UE_LOG_ERROR("Engine", "Error creating network driver.");
+        return false;
+    }
+
+    NetDriver.WritePropertyRaw("NetDriverName", &GameNetDriverName, sizeof(GameNetDriverName));
+    World.GetObject().SetObjectProperty("NetDriver", NetDriver);
+    Bridge.CallFunction(Functions.NetDriverSetWorld, { NetDriver.GetAddress(), World.GetAddress() });
+
+    const FScriptArrayView LevelCollections = World.GetObject().GetArrayProperty("LevelCollections");
+    for (int32 Index = 0; Index < LevelCollections.ArrayNum; ++Index)
+    {
+        const FRemoteAddress Collection = LevelCollections.Data + static_cast<uint64>(Index) * FLevelCollectionLayout::Size;
+        const auto Type = static_cast<ELevelCollectionType>(Memory.Read<uint8>(Collection + FLevelCollectionLayout::CollectionType));
+        if (Type == ELevelCollectionType::DynamicSourceLevels || Type == ELevelCollectionType::StaticLevels)
+        {
+            Memory.Write<FRemoteAddress>(Collection + FLevelCollectionLayout::NetDriver, NetDriver.GetAddress());
+        }
+    }
+
+    FRemoteAllocation& Arena = Bridge.GetArena();
+    const FRemoteAddress ListenURL = Arena.AllocateZeroed(FURLLayout::Size);
+    const FRemoteAddress Error = Arena.AllocateZeroed(sizeof(FScriptArrayView));
+    Memory.Write<int32>(ListenURL + FURLLayout::Port, Port);
+
+    const FRemoteAddress InitListen = NetDriver.GetVirtualFunction(NetworkLayout.InitListenVirtualIndex);
+    const bool bListening = (Bridge.CallFunction(InitListen, { NetDriver.GetAddress(), World.GetAddress() + FWorldLayout::NetworkNotify, ListenURL, 0, Error }) & 0xFF) != 0;
+
+    if (!bListening)
+    {
+        UE_LOG_ERROR("Engine", "Error initializing network layer.");
+        World.GetObject().SetObjectProperty("NetDriver", FObjectHandle());
+        return false;
+    }
+
+    UE_LOG_DISPLAY("Engine", "GameNetDriver " + NetDriver.GetName() + " listening on port " + std::to_string(Port));
+    return true;
 }
 
 FObjectHandle FEngineRuntime::SpawnObject(const FObjectHandle& ClassHandle, const FObjectHandle& Outer) const

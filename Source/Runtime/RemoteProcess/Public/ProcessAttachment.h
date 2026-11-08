@@ -31,7 +31,6 @@ public:
 
     bool ResumeMainThread();
 
-    bool LoadLibraryInto(const std::wstring& LibraryPath, uint32 TimeoutMilliseconds);
 
     bool SuspendOtherThreads(FRemoteAddress GuardedRangeStart, size_t GuardedRangeSize, uint32 MaximumAttempts);
 

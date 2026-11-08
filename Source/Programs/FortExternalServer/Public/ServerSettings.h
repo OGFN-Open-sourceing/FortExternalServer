@@ -29,7 +29,7 @@ public:
 
     std::wstring GetGameExecutableName() const;
 
-    std::wstring GetRedirectLibraryPath(const std::wstring& ServerDirectory) const;
+    std::wstring GetBackendUrl() const;
 
     std::string BuildLaunchArguments() const;
 

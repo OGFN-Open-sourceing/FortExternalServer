@@ -442,6 +442,16 @@ FObjectHandle FUnrealRuntime::GetClassDefaultObject(std::string_view ClassName) 
     return FindObject(std::string("Default__") + std::string(ClassName));
 }
 
+FObjectHandle FUnrealRuntime::GetDefaultObject(const FObjectHandle& ClassHandle) const
+{
+    if (!ClassHandle)
+    {
+        return FObjectHandle();
+    }
+
+    return MakeHandle(GetMemory().ReadPointer(ClassHandle.GetAddress() + FUnrealLayout::UClass_ClassDefaultObject));
+}
+
 FObjectHandle FUnrealRuntime::FindInstanceImplementingVirtual(FRemoteAddress Function, int32& OutVirtualIndex) const
 {
     OutVirtualIndex = InvalidIndex;

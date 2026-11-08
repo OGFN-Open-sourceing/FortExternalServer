@@ -20,7 +20,7 @@ bool UFortAbilitySet::GiveAbility(const FEngineRuntime& EngineRuntime, const FOb
 
     const FUnrealRuntime& Runtime = EngineRuntime.GetUnrealRuntime();
 
-    const FObjectHandle Ability = Runtime.GetClassDefaultObject(AbilityClass.GetName());
+    const FObjectHandle Ability = Runtime.GetDefaultObject(AbilityClass);
     if (!Ability)
     {
         return false;

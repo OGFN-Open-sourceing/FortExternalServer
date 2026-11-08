@@ -1,5 +1,7 @@
 #include "FortniteGame/Public/FortniteGameModule.h"
 #include "FortniteGame/Public/Athena/FortGameModeAthena.h"
+#include "Runtime/Engine/Classes/Engine/World.h"
+#include "Runtime/RemoteProcess/Public/X64Emitter.h"
 
 FFortniteGameModule& FFortniteGameModule::Get()
 {
@@ -65,10 +67,10 @@ bool FFortniteGameModule::PrepareGameModeDefaults() const
         return false;
     }
 
-    const FObjectHandle DefaultGameMode = Runtime.GetClassDefaultObject(GameModeClass.GetName());
+    const FObjectHandle DefaultGameMode = Runtime.GetDefaultObject(GameModeClass);
     if (!DefaultGameMode)
     {
-        UE_LOG_ERROR("FortniteGame", "Game mode " + GameModeClass.GetName() + " has no default object");
+        UE_LOG_ERROR("FortniteGame", "Game mode " + GameModeClass.GetFullName() + " has no default object");
         return false;
     }
 
@@ -92,7 +94,7 @@ bool FFortniteGameModule::TravelToAthena() const
         return false;
     }
 
-    const std::string TravelUrl = MatchSettings.MapName + "?game=" + MatchSettings.GameModeClassPath + "?listen";
+    const std::string TravelUrl = MatchSettings.MapName + "?game=" + MatchSettings.GameModeClassPath;
 
     if (!EngineRuntime->RemoveLocalPlayers())
     {
@@ -104,5 +106,45 @@ bool FFortniteGameModule::TravelToAthena() const
     Controller.ClientTravelToMap(TravelUrl);
 
     UE_LOG_DISPLAY("FortniteGame", "Travelling to " + TravelUrl);
+    return true;
+}
+
+bool FFortniteGameModule::PrepareMatch() const
+{
+    const UWorld World = EngineRuntime->GetWorld();
+    const FObjectHandle GameMode = World ? World.GetAuthorityGameMode() : FObjectHandle();
+    const FObjectHandle GameSession = GameMode ? GameMode.GetObjectProperty("GameSession") : FObjectHandle();
+
+    if (!GameSession)
+    {
+        UE_LOG_ERROR("FortniteGame", "The Athena game mode has no game session");
+        return false;
+    }
+
+    return OverrideGameSessionKickPlayer(GameSession);
+}
+
+bool FFortniteGameModule::OverrideGameSessionKickPlayer(const FObjectHandle& GameSession) const
+{
+    FGameThreadBridge& Bridge = EngineRuntime->GetUnrealRuntime().GetBridge();
+
+    const int32 KickPlayerIndex = Bridge.FindVirtualIndex(GameSession.GetAddress(), EngineRuntime->GetFunctions().GameSessionKickPlayer);
+    if (KickPlayerIndex == InvalidIndex)
+    {
+        UE_LOG_ERROR("FortniteGame", GameSession.GetName() + " does not implement AFortGameSession::KickPlayer through its virtual table");
+        return false;
+    }
+
+    FX64Emitter Emitter;
+    Emitter.MoveRegisterImmediate(EX64Register::Rax, 1);
+    Emitter.EmitReturn();
+
+    const FRemoteAddress Routine = Bridge.EmitRoutine(Emitter);
+    if (Routine == InvalidRemoteAddress || !Bridge.InstallVirtualOverride(GameSession.GetAddress(), KickPlayerIndex, Routine))
+    {
+        return false;
+    }
+
+    UE_LOG_DISPLAY("FortniteGame", GameSession.GetName() + " no longer kicks players without a reservation");
     return true;
 }

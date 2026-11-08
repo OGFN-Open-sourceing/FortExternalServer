@@ -19,6 +19,7 @@ namespace FUnrealLayout
     inline constexpr int32 UStruct_PropertiesSize = 0x40;
     inline constexpr int32 UStruct_MinAlignment = 0x44;
     inline constexpr int32 UStruct_Size = 0x88;
+    inline constexpr int32 UClass_ClassDefaultObject = 0xF8;
 
     inline constexpr int32 UFunction_FunctionFlags = 0x88;
     inline constexpr int32 UFunction_NumParms = 0x8E;

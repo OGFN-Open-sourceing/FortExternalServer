@@ -71,6 +71,18 @@ public:
 
     void StoreImmediateToMemory(EX64Register Base, int32 Displacement, uint32 Value);
 
+    void LoadWordZeroExtended(EX64Register Destination, EX64Register Base, int32 Displacement);
+
+    void StoreWordToMemory(EX64Register Base, int32 Displacement, EX64Register Source);
+
+    void StoreDwordToMemory(EX64Register Base, int32 Displacement, EX64Register Source);
+
+    void CompareRegisterImmediate(EX64Register Left, int32 Value);
+
+    void OrRegisterImmediate(EX64Register Destination, int32 Value);
+
+    void ShiftRightImmediate(EX64Register Destination, uint8 Count);
+
     void AddRegisterImmediate(EX64Register Destination, int32 Value);
 
     void SubRegisterImmediate(EX64Register Destination, int32 Value);
@@ -128,6 +140,8 @@ private:
     };
 
     void EmitRexForRegisterMemory(EX64Register Register, EX64Register Base);
+
+    void EmitOptionalRexForRegisterMemory(EX64Register Register, EX64Register Base);
 
     void EmitRexForXmmMemory(uint8 XmmIndex, EX64Register Base);
 

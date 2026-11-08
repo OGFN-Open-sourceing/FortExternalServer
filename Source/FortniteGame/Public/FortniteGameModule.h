@@ -15,6 +15,8 @@ public:
 
     bool TravelToAthena() const;
 
+    bool PrepareMatch() const;
+
     FEngineRuntime& GetEngineRuntime() const;
 
     const FAthenaMatchSettings& GetMatchSettings() const;
@@ -23,6 +25,8 @@ private:
     bool RegisterNativeOverrides();
 
     bool PrepareGameModeDefaults() const;
+
+    bool OverrideGameSessionKickPlayer(const FObjectHandle& GameSession) const;
 
     FEngineRuntime* EngineRuntime = nullptr;
     FAthenaMatchSettings MatchSettings;

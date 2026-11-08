@@ -3,6 +3,31 @@
 #include "Runtime/Engine/Classes/GameFramework/Actor.h"
 #include "Runtime/Engine/Classes/Engine/NetDriver.h"
 
+enum class ELevelCollectionType : uint8
+{
+    DynamicSourceLevels,
+    DynamicDuplicatedLevels,
+    StaticLevels,
+};
+
+struct FLevelCollectionLayout
+{
+    static constexpr int32 Size = 0x80;
+    static constexpr int32 CollectionType = 0x00;
+    static constexpr int32 NetDriver = 0x10;
+};
+
+struct FURLLayout
+{
+    static constexpr int32 Size = 0x70;
+    static constexpr int32 Port = 0x20;
+};
+
+struct FWorldLayout
+{
+    static constexpr int32 NetworkNotify = 0x28;
+};
+
 class UWorld : public UObject
 {
 public:

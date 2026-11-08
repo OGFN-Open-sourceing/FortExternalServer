@@ -84,6 +84,8 @@ public:
 
     bool InstallVirtualPrologueCall(FRemoteAddress Object, int32 VirtualIndex, FRemoteAddress RoutineAddress);
 
+    bool InstallVirtualOverride(FRemoteAddress Object, int32 VirtualIndex, FRemoteAddress RoutineAddress);
+
     int32 InstallPointerHook(FRemoteAddress PointerSlot, EHookDispatchMode Mode, FHookHandler Handler);
 
     FRemoteAddress EmitRoutine(FX64Emitter& Emitter);

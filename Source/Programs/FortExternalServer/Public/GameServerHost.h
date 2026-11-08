@@ -8,6 +8,8 @@
 #include "Runtime/RemoteProcess/Public/ProcessAttachment.h"
 #include "Runtime/RemoteProcess/Public/RemoteAllocation.h"
 #include "Programs/FortExternalServer/Public/ServerSettings.h"
+#include "Programs/FortExternalServer/Public/GameLogMirror.h"
+#include "Runtime/Online/HTTP/Public/HttpRedirect.h"
 
 enum class EHostStage : uint8
 {
@@ -43,11 +45,9 @@ private:
 
     bool AttachToGameProcess();
 
-    bool LoadRedirectLibrary();
-
     bool HasLocalPlayerController();
 
-    bool IsAthenaWorldListening();
+    bool ListenOnAthenaWorld();
 
     bool LoadPrimaryModuleImage();
 
@@ -68,6 +68,8 @@ private:
     void PrintStatus() const;
 
     FServerSettings Settings;
+    FGameLogMirror GameLogMirror;
+    FHttpRedirect HttpRedirect;
     std::wstring BuildRoot;
 
     FProcessAttachment Process;

@@ -10,6 +10,9 @@ struct FEngineFunctions
     FRemoteAddress AbilitySystemGiveAbility = InvalidRemoteAddress;
     FRemoteAddress AbilitySystemInternalTryActivateAbility = InvalidRemoteAddress;
     FRemoteAddress GameplayAbilitySpecConstructor = InvalidRemoteAddress;
+    FRemoteAddress EngineCreateNetDriver = InvalidRemoteAddress;
+    FRemoteAddress NetDriverSetWorld = InvalidRemoteAddress;
+    FRemoteAddress GameSessionKickPlayer = InvalidRemoteAddress;
 
     std::vector<std::pair<FRemoteAddress, const char*>> GetAllEntries() const;
 };
@@ -18,6 +21,7 @@ struct FEngineNetworkLayout
 {
     int32 NetDriverReplicationDriver = InvalidIndex;
     int32 ServerReplicateActorsVirtualIndex = InvalidIndex;
+    int32 InitListenVirtualIndex = InvalidIndex;
 };
 
 struct FEngineGlobals
@@ -51,6 +55,8 @@ public:
     FObjectHandle GetLocalPlayer(int32 Index = 0) const;
 
     bool RemoveLocalPlayers() const;
+
+    bool Listen(const UWorld& World, int32 Port) const;
 
     FObjectHandle SpawnObject(const FObjectHandle& ClassHandle, const FObjectHandle& Outer) const;
 

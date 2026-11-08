@@ -34,6 +34,9 @@ namespace
         Functions.AbilitySystemGiveAbility = ToImageAddress(Image, Offsets.AbilitySystemGiveAbility);
         Functions.AbilitySystemInternalTryActivateAbility = ToImageAddress(Image, Offsets.AbilitySystemInternalTryActivateAbility);
         Functions.GameplayAbilitySpecConstructor = ToImageAddress(Image, Offsets.GameplayAbilitySpecConstructor);
+        Functions.EngineCreateNetDriver = ToImageAddress(Image, Offsets.EngineCreateNetDriver);
+        Functions.NetDriverSetWorld = ToImageAddress(Image, Offsets.NetDriverSetWorld);
+        Functions.GameSessionKickPlayer = ToImageAddress(Image, Offsets.GameSessionKickPlayer);
         return Functions;
     }
 
@@ -42,6 +45,7 @@ namespace
         FEngineNetworkLayout Layout;
         Layout.NetDriverReplicationDriver = Profile.NetDriverReplicationDriver;
         Layout.ServerReplicateActorsVirtualIndex = Profile.ServerReplicateActorsVirtualIndex;
+        Layout.InitListenVirtualIndex = Profile.InitListenVirtualIndex;
         return Layout;
     }
 
@@ -53,7 +57,6 @@ namespace
     constexpr uint64 StatusIntervalMilliseconds = 15000;
     constexpr uint64 PumpWarmupTimeoutMilliseconds = 60000;
     constexpr uint32 EngineScanIntervalMilliseconds = 500;
-    constexpr uint32 RedirectLoadTimeoutMilliseconds = 30000;
     constexpr uint64 GameThreadHoldTimeoutMilliseconds = 30000;
     constexpr uint64 AttachTimeoutMilliseconds = 180000;
     constexpr uint64 ImageReadyTimeoutMilliseconds = 120000;
@@ -87,6 +90,7 @@ bool FGameServerHost::AttachToGameProcess()
 
     if (Settings.ShouldAttachToRunningProcess())
     {
+        GameLogMirror.Start(FGameLogMirror::GetDefaultLogFilePath(), false);
         return Process.AttachToRunning(ExecutableName, AttachTimeoutMilliseconds);
     }
 
@@ -99,35 +103,13 @@ bool FGameServerHost::AttachToGameProcess()
     const std::wstring WorkingDirectory = FPaths::GetParentDirectory(ExecutablePath);
     const std::wstring Arguments = FStringConv::ToWide(Settings.BuildLaunchArguments());
 
+    GameLogMirror.Start(FGameLogMirror::GetDefaultLogFilePath(), true);
+
     if (!Process.LaunchAndAttach(ExecutablePath, Arguments, WorkingDirectory, false))
     {
         return false;
     }
 
-    return LoadRedirectLibrary();
-}
-
-bool FGameServerHost::LoadRedirectLibrary()
-{
-    const std::wstring LibraryPath = Settings.GetRedirectLibraryPath(FPaths::GetExecutableDirectory());
-    if (LibraryPath.empty())
-    {
-        return true;
-    }
-
-    if (!FPaths::FileExists(LibraryPath))
-    {
-        UE_LOG_ERROR("Host", "The redirect library was not found at " + FStringConv::ToNarrow(LibraryPath));
-        return false;
-    }
-
-    if (!Process.LoadLibraryInto(LibraryPath, RedirectLoadTimeoutMilliseconds))
-    {
-        UE_LOG_ERROR("Host", "The redirect library failed to load into the game process");
-        return false;
-    }
-
-    UE_LOG_DISPLAY("Host", "Loaded redirect library " + FStringConv::ToNarrow(LibraryPath));
     return true;
 }
 
@@ -211,6 +193,13 @@ bool FGameServerHost::InitialiseRemoteRuntime()
     if (!Bridge.Initialize(Memory, CodeArena, Process.GetMainThreadId()))
     {
         UE_LOG_ERROR("Host", "Failed to initialise the game thread bridge");
+        return false;
+    }
+
+    const FFortBuildProfile& RedirectProfile = GetActiveBuildProfile();
+    if (!HttpRedirect.Install(Bridge, ToImageAddress(ModuleImage, RedirectProfile.EngineOffsets.HttpRequestVirtualTable),
+            ToImageAddress(ModuleImage, RedirectProfile.EngineFunctions.HttpRequestSetURL), Settings.GetBackendUrl(), BootTimeoutMilliseconds))
+    {
         return false;
     }
 
@@ -352,11 +341,16 @@ bool FGameServerHost::HasLocalPlayerController()
     return LocalPlayer && LocalPlayer.GetObjectProperty("PlayerController");
 }
 
-bool FGameServerHost::IsAthenaWorldListening()
+bool FGameServerHost::ListenOnAthenaWorld()
 {
     const FGameThreadHoldScope Hold(Bridge, GameThreadHoldTimeoutMilliseconds);
     const UWorld World = EngineRuntime.GetWorld();
-    return World && World.GetAuthorityGameMode() && World.GetNetDriver();
+    if (!World || World.GetName() != Settings.GetMatch().MapName || !World.GetAuthorityGameMode())
+    {
+        return false;
+    }
+
+    return World.GetNetDriver() || EngineRuntime.Listen(World, Settings.GetPort());
 }
 
 bool FGameServerHost::WaitForAthenaWorld()
@@ -374,11 +368,11 @@ bool FGameServerHost::WaitForAthenaWorld()
 
         Bridge.ServicePendingHooks();
 
-        if (IsAthenaWorldListening())
+        if (ListenOnAthenaWorld())
         {
             UE_LOG_DISPLAY("Host", "Athena world is live and listening");
             const FGameThreadHoldScope Hold(Bridge, GameThreadHoldTimeoutMilliseconds);
-            return NetworkHooks.Install(EngineRuntime);
+            return NetworkHooks.Install(EngineRuntime) && FFortniteGameModule::Get().PrepareMatch();
         }
 
         FWindowsPlatform::SleepMilliseconds(500);
@@ -488,6 +482,8 @@ void FGameServerHost::RunUntilStopped()
     Stage = EHostStage::Stopped;
     FFortniteGameModule::Get().ShutdownModule();
     NetworkHooks.Uninstall();
+    HttpRedirect.Uninstall();
+    GameLogMirror.Stop();
     FServerLog::Shutdown();
 }
 

@@ -5,7 +5,7 @@ struct FConfiguration
     static inline auto Playlist = "Playlist_DefaultSolo";
     static inline auto MapToLoad = "Athena_Terrain";
     static inline auto StartingLoadout = "";
-    static inline auto RedirectLibrary = "CoreRedirect.dll";
+    static inline auto BackendUrl = "http://127.0.0.1:5595";
     static inline auto Port = 7777;
     static inline auto MaxTickRate = 30;
     static inline auto MaxPlayers = 100;

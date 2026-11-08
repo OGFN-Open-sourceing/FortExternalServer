@@ -451,6 +451,26 @@ bool FGameThreadBridge::InstallVirtualPrologueCall(FRemoteAddress Object, int32 
     return true;
 }
 
+bool FGameThreadBridge::InstallVirtualOverride(FRemoteAddress Object, int32 VirtualIndex, FRemoteAddress RoutineAddress)
+{
+    if (!IsInitialized() || Object == InvalidRemoteAddress || RoutineAddress == InvalidRemoteAddress || VirtualIndex < 0 ||
+        VirtualIndex >= FBridgeLayout::ShadowVirtualTableEntries)
+    {
+        return false;
+    }
+
+    const FRemoteAddress SlotOffset = static_cast<FRemoteAddress>(VirtualIndex) * sizeof(uint64);
+    const FRemoteAddress ShadowTable = AcquireShadowVirtualTable(Object);
+    if (ShadowTable == InvalidRemoteAddress || !Memory->Write<uint64>(ShadowTable + SlotOffset, RoutineAddress))
+    {
+        UE_LOG_ERROR("Bridge", "Failed to override virtual slot " + std::to_string(VirtualIndex) + " of " + FStringConv::ToHex(Object));
+        return false;
+    }
+
+    UE_LOG_DISPLAY("Bridge", "Overrode virtual slot " + std::to_string(VirtualIndex) + " of " + FStringConv::ToHex(Object));
+    return true;
+}
+
 bool FGameThreadBridge::InstallGameThreadPump(FRemoteAddress Object, int32 VirtualIndex)
 {
     if (bGameThreadPumpInstalled || !InstallVirtualPrologueCall(Object, VirtualIndex, PumpRoutineAddress))

@@ -52,6 +52,7 @@ struct FEngineOffsetProfile
     uint32 StaticFindObject = 0;
     uint32 StaticLoadObject = 0;
     uint32 FNameConstructor = 0;
+    uint32 HttpRequestVirtualTable = 0;
 };
 
 struct FEngineFunctionProfile
@@ -61,12 +62,17 @@ struct FEngineFunctionProfile
     uint32 AbilitySystemGiveAbility = 0;
     uint32 AbilitySystemInternalTryActivateAbility = 0;
     uint32 GameplayAbilitySpecConstructor = 0;
+    uint32 EngineCreateNetDriver = 0;
+    uint32 NetDriverSetWorld = 0;
+    uint32 GameSessionKickPlayer = 0;
+    uint32 HttpRequestSetURL = 0;
 };
 
 struct FNetworkLayoutProfile
 {
     int32 NetDriverReplicationDriver = InvalidIndex;
     int32 ServerReplicateActorsVirtualIndex = InvalidIndex;
+    int32 InitListenVirtualIndex = InvalidIndex;
 };
 
 struct FFortBuildProfile

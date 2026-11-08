@@ -210,6 +210,71 @@ void FX64Emitter::StoreImmediateToMemory(EX64Register Base, int32 Displacement, 
     EmitU32(Value);
 }
 
+void FX64Emitter::EmitOptionalRexForRegisterMemory(EX64Register Register, EX64Register Base)
+{
+    uint8 Rex = 0x40;
+    if (RegisterNeedsExtension(Register))
+    {
+        Rex |= 0x4;
+    }
+
+    if (RegisterNeedsExtension(Base))
+    {
+        Rex |= 0x1;
+    }
+
+    if (Rex != 0x40)
+    {
+        EmitU8(Rex);
+    }
+}
+
+void FX64Emitter::LoadWordZeroExtended(EX64Register Destination, EX64Register Base, int32 Displacement)
+{
+    EmitRexForRegisterMemory(Destination, Base);
+    EmitBytes({ 0x0F, 0xB7 });
+    EmitModRmWithDisplacement(Destination, Base, Displacement);
+}
+
+void FX64Emitter::StoreWordToMemory(EX64Register Base, int32 Displacement, EX64Register Source)
+{
+    EmitU8(0x66);
+    EmitOptionalRexForRegisterMemory(Source, Base);
+    EmitU8(0x89);
+    EmitModRmWithDisplacement(Source, Base, Displacement);
+}
+
+void FX64Emitter::StoreDwordToMemory(EX64Register Base, int32 Displacement, EX64Register Source)
+{
+    EmitOptionalRexForRegisterMemory(Source, Base);
+    EmitU8(0x89);
+    EmitModRmWithDisplacement(Source, Base, Displacement);
+}
+
+void FX64Emitter::CompareRegisterImmediate(EX64Register Left, int32 Value)
+{
+    EmitU8(static_cast<uint8>(0x48 | (RegisterNeedsExtension(Left) ? 0x1 : 0x0)));
+    EmitU8(0x81);
+    EmitU8(static_cast<uint8>(0xF8 | RegisterIndex(Left)));
+    EmitU32(static_cast<uint32>(Value));
+}
+
+void FX64Emitter::OrRegisterImmediate(EX64Register Destination, int32 Value)
+{
+    EmitU8(static_cast<uint8>(0x48 | (RegisterNeedsExtension(Destination) ? 0x1 : 0x0)));
+    EmitU8(0x81);
+    EmitU8(static_cast<uint8>(0xC8 | RegisterIndex(Destination)));
+    EmitU32(static_cast<uint32>(Value));
+}
+
+void FX64Emitter::ShiftRightImmediate(EX64Register Destination, uint8 Count)
+{
+    EmitU8(static_cast<uint8>(0x48 | (RegisterNeedsExtension(Destination) ? 0x1 : 0x0)));
+    EmitU8(0xC1);
+    EmitU8(static_cast<uint8>(0xE8 | RegisterIndex(Destination)));
+    EmitU8(Count);
+}
+
 void FX64Emitter::AddRegisterImmediate(EX64Register Destination, int32 Value)
 {
     EmitU8(static_cast<uint8>(0x48 | (RegisterNeedsExtension(Destination) ? 0x1 : 0x0)));

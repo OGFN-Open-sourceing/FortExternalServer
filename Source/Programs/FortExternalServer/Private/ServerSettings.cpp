@@ -9,7 +9,7 @@ namespace
     constexpr std::wstring_view LogFileRelativePath = L"Saved/Logs/FortExternalServer.log";
 
     constexpr std::string_view LaunchArguments =
-        "-AUTH_LOGIN=unused -AUTH_PASSWORD=unused -AUTH_TYPE=epic -epicapp=Fortnite -epicenv=Prod -epiclocale=en-us -epicportal -skippatchcheck -nobe -fromfl=eac -fltoken=3db3ba5dcbd2e16703f3978d -nosplash -log";
+        "-AUTH_LOGIN=unused -AUTH_PASSWORD=unused -AUTH_TYPE=epic -epicapp=Fortnite -epicenv=Prod -epiclocale=en-us -epicportal -skippatchcheck -nobe -fromfl=eac -fltoken=3db3ba5dcbd2e16703f3978d -nosplash";
 
     std::vector<std::string> SplitLoadout(std::string_view Value)
     {
@@ -105,15 +105,9 @@ std::wstring FServerSettings::GetGameExecutablePath(const std::wstring& BuildRoo
     return FPaths::Combine(BuildRoot, std::wstring(GameExecutableRelativePath));
 }
 
-std::wstring FServerSettings::GetRedirectLibraryPath(const std::wstring& ServerDirectory) const
+std::wstring FServerSettings::GetBackendUrl() const
 {
-    const std::wstring Library = FStringConv::ToWide(FConfiguration::RedirectLibrary);
-    if (Library.empty())
-    {
-        return Library;
-    }
-
-    return Library.find(L':') == std::wstring::npos ? FPaths::Combine(ServerDirectory, Library) : Library;
+    return FStringConv::ToWide(FConfiguration::BackendUrl);
 }
 
 std::wstring FServerSettings::GetGameExecutableName() const

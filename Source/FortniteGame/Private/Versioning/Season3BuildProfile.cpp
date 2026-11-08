@@ -57,15 +57,21 @@ namespace
         Profile.EngineOffsets.StaticFindObject = 0x014E5890;
         Profile.EngineOffsets.StaticLoadObject = 0x014E6B50;
         Profile.EngineOffsets.FNameConstructor = 0x01327FE0;
+        Profile.EngineOffsets.HttpRequestVirtualTable = 0x03932578;
 
         Profile.EngineFunctions.NetDriverTickFlush = 0x022B6AB0;
         Profile.EngineFunctions.EngineTick = 0x00BE4D40;
         Profile.EngineFunctions.AbilitySystemGiveAbility = 0x00527580;
         Profile.EngineFunctions.AbilitySystemInternalTryActivateAbility = 0x00528B50;
         Profile.EngineFunctions.GameplayAbilitySpecConstructor = 0x0103DA30;
+        Profile.EngineFunctions.EngineCreateNetDriver = 0x02501480;
+        Profile.EngineFunctions.NetDriverSetWorld = 0x022B56F0;
+        Profile.EngineFunctions.GameSessionKickPlayer = 0x00D6B720;
+        Profile.EngineFunctions.HttpRequestSetURL = 0x01C07C70;
 
         Profile.NetworkLayout.NetDriverReplicationDriver = 0x500;
         Profile.NetworkLayout.ServerReplicateActorsVirtualIndex = 0x53;
+        Profile.NetworkLayout.InitListenVirtualIndex = 0x4A;
 
         return Profile;
     }

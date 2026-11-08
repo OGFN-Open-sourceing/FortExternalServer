@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" ToolsVersion="18.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|x64">
@@ -80,7 +80,9 @@
     <ClInclude Include="..\Source\FortniteGame\Public\Versioning\FortBuildProfile.h" />
     <ClInclude Include="..\Source\Programs\FortExternalServer\Public\Configuration.h" />
     <ClInclude Include="..\Source\Programs\FortExternalServer\Public\FortExternalServerMain.h" />
+    <ClInclude Include="..\Source\Programs\FortExternalServer\Public\GameLogMirror.h" />
     <ClInclude Include="..\Source\Programs\FortExternalServer\Public\GameServerHost.h" />
+    <ClInclude Include="..\Source\Runtime\Online\HTTP\Public\HttpRedirect.h" />
     <ClInclude Include="..\Source\Programs\FortExternalServer\Public\ServerSettings.h" />
     <ClInclude Include="..\Source\Runtime\CoreUObject\Public\UObject\NativeFunctionOverrides.h" />
     <ClInclude Include="..\Source\Runtime\CoreUObject\Public\UObject\Object.h" />
@@ -128,7 +130,9 @@
     <ClCompile Include="..\Source\FortniteGame\Private\Items\FortInventory.cpp" />
     <ClCompile Include="..\Source\FortniteGame\Private\Versioning\Season3BuildProfile.cpp" />
     <ClCompile Include="..\Source\Programs\FortExternalServer\Private\FortExternalServerMain.cpp" />
+    <ClCompile Include="..\Source\Programs\FortExternalServer\Private\GameLogMirror.cpp" />
     <ClCompile Include="..\Source\Programs\FortExternalServer\Private\GameServerHost.cpp" />
+    <ClCompile Include="..\Source\Runtime\Online\HTTP\Private\HttpRedirect.cpp" />
     <ClCompile Include="..\Source\Programs\FortExternalServer\Private\ServerSettings.cpp" />
     <ClCompile Include="..\Source\Runtime\CoreUObject\Private\UObject\NativeFunctionOverrides.cpp" />
     <ClCompile Include="..\Source\Runtime\CoreUObject\Private\UObject\ObjectHandle.cpp" />

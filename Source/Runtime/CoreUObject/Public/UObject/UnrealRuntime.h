@@ -66,6 +66,8 @@ public:
 
     FObjectHandle GetClassDefaultObject(std::string_view ClassName) const;
 
+    FObjectHandle GetDefaultObject(const FObjectHandle& ClassHandle) const;
+
     int32 GetObjectCount() const;
 
     FObjectHandle GetObjectByIndex(int32 Index) const;
