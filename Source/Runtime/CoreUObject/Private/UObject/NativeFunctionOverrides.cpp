@@ -24,10 +24,11 @@ bool FNativeFunctionOverrides::Override(std::string_view ClassName, std::string_
     const FRemoteAddress ExecSlot = Function.GetAddress() + FUnrealLayout::UFunction_ExecFunction;
     const FRemoteAddress OriginalFunction = Runtime->GetMemory().ReadPointer(ExecSlot);
     const FRemoteAddress FunctionAddress = Function.GetAddress();
+    const FRemoteAddress OwnerClass = DefaultObject.GetClass().GetAddress();
 
     const int32 Channel = Runtime->GetBridge().InstallPointerHook(ExecSlot, EHookDispatchMode::Blocking,
-        [this, FunctionAddress, OriginalFunction, Handler = std::move(Handler)](const FHookInvocation& Invocation)
-        { return Dispatch(FunctionAddress, OriginalFunction, Handler, Invocation); });
+        [this, OwnerClass, FunctionAddress, OriginalFunction, Handler = std::move(Handler)](const FHookInvocation& Invocation)
+        { return Dispatch(OwnerClass, FunctionAddress, OriginalFunction, Handler, Invocation); });
 
     if (Channel == InvalidIndex)
     {
@@ -60,12 +61,12 @@ int32 FNativeFunctionOverrides::GetOverrideCount() const
     return static_cast<int32>(Channels.size());
 }
 
-FHookResponse FNativeFunctionOverrides::Dispatch(FRemoteAddress Function, FRemoteAddress OriginalFunction, const FNativeFunctionHandler& Handler,
-    const FHookInvocation& Invocation) const
+FHookResponse FNativeFunctionOverrides::Dispatch(FRemoteAddress OwnerClass, FRemoteAddress Function, FRemoteAddress OriginalFunction,
+    const FNativeFunctionHandler& Handler, const FHookInvocation& Invocation) const
 {
     const FFrame Stack = FFrame::Read(Runtime->GetMemory(), Invocation.IntegerArguments[1]);
 
-    if (Stack.Node != Function)
+    if (Stack.Node != Function || !Runtime->MakeHandle(Invocation.IntegerArguments[0]).IsA(Runtime->MakeHandle(OwnerClass)))
     {
         return FHookResponse::ContinueToOriginal();
     }

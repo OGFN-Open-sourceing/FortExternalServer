@@ -149,7 +149,7 @@ private:
 
     FRemoteAddress GetChannelAddress(int32 ChannelIndex) const;
 
-    bool WaitForGameThread(FRemoteAddress Function, const std::function<bool()>& IsComplete);
+    bool WaitForGameThread(FRemoteAddress Function, const std::function<bool()>& IsComplete, bool bServiceHooks);
 
     const FRemoteMemory* Memory = nullptr;
     FRemoteAllocation* Arena = nullptr;

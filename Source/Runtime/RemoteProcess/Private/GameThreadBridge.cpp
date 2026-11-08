@@ -753,7 +753,7 @@ bool FGameThreadHoldScope::IsHeld() const
     return bHeld;
 }
 
-bool FGameThreadBridge::WaitForGameThread(FRemoteAddress Function, const std::function<bool()>& IsComplete)
+bool FGameThreadBridge::WaitForGameThread(FRemoteAddress Function, const std::function<bool()>& IsComplete, bool bServiceHooks)
 {
     uint64 NextReport = FWindowsPlatform::GetTimeMilliseconds() + BusyReportIntervalMilliseconds;
 
@@ -772,7 +772,11 @@ bool FGameThreadBridge::WaitForGameThread(FRemoteAddress Function, const std::fu
             UE_LOG_WARNING("Bridge", "The game thread is still busy, waiting to run " + FStringConv::ToHex(Function));
         }
 
-        ServicePendingHooks();
+        if (bServiceHooks)
+        {
+            ServicePendingHooks();
+        }
+
         FWindowsPlatform::YieldThread();
     }
 
@@ -794,7 +798,7 @@ uint64 FGameThreadBridge::CallFunction(FRemoteAddress Function, const std::vecto
 
     const auto IsDoorbellReleased = [this]() { return Memory->Read<uint64>(ControlBlockAddress + FBridgeLayout::CommandDoorbell) == 0; };
 
-    if (!WaitForGameThread(Function, IsDoorbellReleased))
+    if (!WaitForGameThread(Function, IsDoorbellReleased, true))
     {
         return 0;
     }
@@ -813,7 +817,7 @@ uint64 FGameThreadBridge::CallFunction(FRemoteAddress Function, const std::vecto
 
     const auto IsTicketCompleted = [this, Ticket]() { return Memory->Read<uint64>(ControlBlockAddress + FBridgeLayout::CompletedTicket) == Ticket; };
 
-    if (!WaitForGameThread(Function, IsTicketCompleted))
+    if (!WaitForGameThread(Function, IsTicketCompleted, false))
     {
         UE_LOG_ERROR("Bridge", "The game process exited during the remote call to " + FStringConv::ToHex(Function));
         return 0;

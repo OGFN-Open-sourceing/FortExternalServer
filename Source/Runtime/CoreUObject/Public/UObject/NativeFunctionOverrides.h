@@ -22,7 +22,7 @@ public:
     int32 GetOverrideCount() const;
 
 private:
-    FHookResponse Dispatch(FRemoteAddress Function, FRemoteAddress OriginalFunction, const FNativeFunctionHandler& Handler,
+    FHookResponse Dispatch(FRemoteAddress OwnerClass, FRemoteAddress Function, FRemoteAddress OriginalFunction, const FNativeFunctionHandler& Handler,
         const FHookInvocation& Invocation) const;
 
     FUnrealRuntime* Runtime = nullptr;
