@@ -1,5 +1,5 @@
 #include "FortniteGame/Public/Athena/FortGameModeAthena.h"
-#include "FortniteGame/Public/Athena/FortPoiManager.h"
+#include "FortniteGame/Public/Athena/FortPoiVolume.h"
 #include "FortniteGame/Public/FortniteGameModule.h"
 #include "Runtime/Engine/Classes/Engine/World.h"
 #include "Runtime/Engine/Classes/Kismet/GameplayStatics.h"
@@ -239,18 +239,20 @@ ENativeOverrideResult AFortGameModeAthena::execSpawnDefaultPawnFor(const FNative
     return ENativeOverrideResult::Handled;
 }
 
-void AFortGameModeAthena::RemovePoiVolumesWithoutBrush(const FUnrealRuntime& Runtime)
+void AFortGameModeAthena::EnsurePoiVolumeBrushes(const FUnrealRuntime& Runtime)
 {
     const UWorld World = FFortniteGameModule::Get().GetEngineRuntime().GetWorld();
-    const FObjectHandle PoiManagerClass = Runtime.FindOrLoadObject("/Script/FortniteGame.FortPoiManager");
+    const FObjectHandle PoiVolumeClass = Runtime.FindOrLoadObject("/Script/FortniteGame.FortPoiVolume");
 
-    for (const FObjectHandle& Actor : World.GetAllActorsOfClass(PoiManagerClass))
+    int32 Repaired = 0;
+    for (const FObjectHandle& Actor : World.GetAllActorsOfClass(PoiVolumeClass))
     {
-        const int32 Removed = AFortPoiManager(Actor).RemoveVolumesWithoutBrush();
-        if (Removed > 0)
-        {
-            UE_LOG_DISPLAY("FortniteGame", Actor.GetName() + " skips " + std::to_string(Removed) + " POI volumes that have no brush component");
-        }
+        Repaired += AFortPoiVolume(Actor).EnsureBrushComponent() ? 1 : 0;
+    }
+
+    if (Repaired > 0)
+    {
+        UE_LOG_DISPLAY("FortniteGame", "Gave " + std::to_string(Repaired) + " POI volumes their collision component as BrushComponent");
     }
 }
 
@@ -269,6 +271,6 @@ ENativeOverrideResult AFortGameModeAthena::execHandleStartingNewPlayer(const FNa
         Controller.EnsureWorldInventory();
     }
 
-    RemovePoiVolumesWithoutBrush(Call.GetRuntime());
+    EnsurePoiVolumeBrushes(Call.GetRuntime());
     return ENativeOverrideResult::ContinueToOriginal;
 }
