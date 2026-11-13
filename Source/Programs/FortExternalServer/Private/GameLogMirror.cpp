@@ -1,4 +1,4 @@
-#include "Programs/FortExternalServer/Public/GameLogMirror.h"
+﻿#include "Programs/FortExternalServer/Public/GameLogMirror.h"
 #include "Runtime/Core/Public/HAL/WindowsPlatform.h"
 
 namespace
@@ -59,7 +59,7 @@ std::wstring FGameLogMirror::GetDefaultLogFilePath()
         return std::wstring();
     }
 
-    return std::wstring(LocalAppData) + L"/FortniteGame/Saved/Logs/FortniteGame.log";
+    return std::wstring(LocalAppData) + L"/FortniteGame/Saved/Logs/" + std::wstring(GameLogFileName);
 }
 
 bool FGameLogMirror::ReadFileState(const std::wstring& Path, FFileState& OutState)

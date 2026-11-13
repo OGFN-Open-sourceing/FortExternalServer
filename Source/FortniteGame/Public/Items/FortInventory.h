@@ -51,6 +51,20 @@ public:
     void Update(bool bRemovedItem = false) const;
 
 private:
+    void OnItemGiven(const FFortItemEntryView& Entry, int32 Count) const;
+
+    bool IsStackable(const FObjectHandle& ItemDefinition) const;
+
+    bool AddToStack(const FFortItemEntryView& Entry, int32 Count) const;
+
+    FObjectHandle FindItemInstance(const FGuid& ItemGuid) const;
+
+    void MarkItemDirty(FRemoteAddress InventoryAddress, FRemoteAddress EntryAddress) const;
+
+    bool IsInQuickBar(const FObjectHandle& QuickBars, EFortQuickBars QuickBar, const FGuid& ItemGuid) const;
+
+    void AddToQuickBar(const FFortItemEntryView& Entry) const;
+
     FObjectHandle FindItemDefinition(std::string_view Identifier) const;
 
     AFortPlayerControllerAthena Controller;

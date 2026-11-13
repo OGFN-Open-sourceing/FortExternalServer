@@ -46,6 +46,7 @@ struct FEngineOffsetProfile
     uint32 GObjects = 0;
     uint32 AppendString = 0;
     uint32 GWorld = 0;
+    int32 WorldOwningGameInstance = InvalidIndex;
     uint32 ProcessEvent = 0;
     int32 ProcessEventIdx = InvalidIndex;
     uint32 Realloc = 0;

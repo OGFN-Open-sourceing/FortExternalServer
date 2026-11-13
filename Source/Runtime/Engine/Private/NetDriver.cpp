@@ -29,3 +29,14 @@ void UNetDriver::SetNetServerMaxTickRate(int32 Value)
 {
     Object.SetProperty<int32>("NetServerMaxTickRate", Value);
 }
+
+int32 UNetDriver::GetMaxClientRate() const
+{
+    return Object.GetProperty<int32>("MaxClientRate", 0);
+}
+
+void UNetDriver::SetMaxClientRate(int32 Value)
+{
+    Object.SetProperty<int32>("MaxClientRate", Value);
+    Object.SetProperty<int32>("MaxInternetClientRate", Value);
+}

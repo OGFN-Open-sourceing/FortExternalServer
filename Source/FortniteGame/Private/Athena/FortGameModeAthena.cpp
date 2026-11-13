@@ -1,6 +1,7 @@
 #include "FortniteGame/Public/Athena/FortGameModeAthena.h"
 #include "FortniteGame/Public/Athena/FortPoiVolume.h"
 #include "FortniteGame/Public/FortniteGameModule.h"
+#include "Runtime/Engine/Classes/Engine/NetDriver.h"
 #include "Runtime/Engine/Classes/Engine/World.h"
 #include "Runtime/Engine/Classes/Kismet/GameplayStatics.h"
 
@@ -256,6 +257,24 @@ void AFortGameModeAthena::EnsurePoiVolumeBrushes(const FUnrealRuntime& Runtime)
     }
 }
 
+void AFortGameModeAthena::RaiseNetSpeed(const AFortPlayerControllerAthena& Controller)
+{
+    UNetConnection Connection(Controller.GetNetConnection());
+    if (!Connection)
+    {
+        return;
+    }
+
+    const UNetDriver Driver(Connection.GetDriver());
+    const int32 MaxClientRate = Driver ? Driver.GetMaxClientRate() : 0;
+
+    if (MaxClientRate > 0)
+    {
+        Connection.SetCurrentNetSpeed(MaxClientRate);
+        UE_LOG_DISPLAY("Athena", "Net speed of " + Controller.GetName() + " raised to " + std::to_string(MaxClientRate));
+    }
+}
+
 ENativeOverrideResult AFortGameModeAthena::execHandleStartingNewPlayer(const FNativeFunctionCall& Call)
 {
     struct FHandleStartingNewPlayerParameters
@@ -269,6 +288,8 @@ ENativeOverrideResult AFortGameModeAthena::execHandleStartingNewPlayer(const FNa
     if (Controller && !Controller.IsLocalController())
     {
         Controller.EnsureWorldInventory();
+        Controller.EnsureQuickBars();
+        RaiseNetSpeed(Controller);
     }
 
     EnsurePoiVolumeBrushes(Call.GetRuntime());

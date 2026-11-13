@@ -32,6 +32,8 @@ public:
 
     void Stop();
 
+    void CloseTrackedProcess();
+
     EHostStage GetStage() const;
 
     const FServerSettings& GetSettings() const;
@@ -54,6 +56,8 @@ private:
     bool InitialiseRemoteRuntime();
 
     bool VerifyBuildVersion();
+
+    FObjectHandle FindEngineThroughWorld(int32& OutEngineTickIndex) const;
 
     bool InstallHooks();
 

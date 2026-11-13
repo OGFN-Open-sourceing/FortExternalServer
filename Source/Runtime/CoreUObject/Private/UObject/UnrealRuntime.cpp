@@ -6,7 +6,7 @@
 
 namespace
 {
-    constexpr size_t ScratchArenaBytes = 0x20000;
+    constexpr size_t ScratchArenaBytes = 0x100000;
 
     uint64 MakeCacheKey(FRemoteAddress OwnerAddress, std::string_view Name)
     {
@@ -241,6 +241,7 @@ FRemoteAddress FUnrealRuntime::AcquireScratch(size_t Size) const
     size_t AlignedCursor = AlignUp<size_t>(ScratchCursor, 16);
     if (AlignedCursor + Size > ScratchArenaSize)
     {
+        UE_LOG_VERBOSE("Runtime", "Scratch arena wrapped");
         AlignedCursor = 0;
     }
 
@@ -363,7 +364,9 @@ std::string FUnrealRuntime::GetNameString(FName Name) const
         return std::string();
     }
 
+    const uint8 EmptyString[FUnrealLayout::FScriptArray_Size] = {};
     GetMemory().Write<FName>(NameStorage, Name);
+    GetMemory().WriteRaw(StringStorage, EmptyString, sizeof(EmptyString));
 
     Bridge->CallFunction(Globals.NameToString, { NameStorage, StringStorage });
 

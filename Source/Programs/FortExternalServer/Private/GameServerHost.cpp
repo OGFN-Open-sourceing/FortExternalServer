@@ -49,14 +49,14 @@ namespace
         return Layout;
     }
 
-    constexpr size_t CodeArenaBytes = 0x100000;
+    constexpr size_t CodeArenaBytes = 0x400000;
     constexpr int32 BootObjectCountThreshold = 40000;
     constexpr uint64 BootTimeoutMilliseconds = 600000;
     constexpr uint64 MainMenuTimeoutMilliseconds = 300000;
     constexpr uint64 AthenaWorldTimeoutMilliseconds = 300000;
     constexpr uint64 StatusIntervalMilliseconds = 15000;
     constexpr uint64 PumpWarmupTimeoutMilliseconds = 60000;
-    constexpr uint32 EngineScanIntervalMilliseconds = 500;
+    constexpr uint32 EngineScanIntervalMilliseconds = 50;
     constexpr uint64 GameThreadHoldTimeoutMilliseconds = 30000;
     constexpr uint64 AttachTimeoutMilliseconds = 180000;
     constexpr uint64 ImageReadyTimeoutMilliseconds = 120000;
@@ -91,7 +91,7 @@ bool FGameServerHost::AttachToGameProcess()
     if (Settings.ShouldAttachToRunningProcess())
     {
         GameLogMirror.Start(FGameLogMirror::GetDefaultLogFilePath(), false);
-        return Process.AttachToRunning(ExecutableName, AttachTimeoutMilliseconds);
+        return Process.AttachToRunning(ExecutableName, AttachTimeoutMilliseconds, Settings.ShouldTrackProcessId());
     }
 
     if (!FPaths::FileExists(ExecutablePath))
@@ -105,7 +105,7 @@ bool FGameServerHost::AttachToGameProcess()
 
     GameLogMirror.Start(FGameLogMirror::GetDefaultLogFilePath(), true);
 
-    if (!Process.LaunchAndAttach(ExecutablePath, Arguments, WorkingDirectory, false, Settings.IsHeadless()))
+    if (!Process.LaunchAndAttach(ExecutablePath, Arguments, WorkingDirectory, false, Settings.IsHeadless(), Settings.ShouldTrackProcessId()))
     {
         return false;
     }
@@ -259,6 +259,28 @@ bool FGameServerHost::VerifyBuildVersion()
     return true;
 }
 
+FObjectHandle FGameServerHost::FindEngineThroughWorld(int32& OutEngineTickIndex) const
+{
+    const FEngineOffsetProfile& Offsets = GetActiveBuildProfile().EngineOffsets;
+    if (Offsets.GWorld == 0 || Offsets.WorldOwningGameInstance < 0)
+    {
+        return FObjectHandle();
+    }
+
+    const FRemoteMemory& RemoteMemory = UnrealRuntime.GetMemory();
+    const FRemoteAddress World = RemoteMemory.ReadPointer(ToImageAddress(ModuleImage, Offsets.GWorld));
+    const FRemoteAddress GameInstance = World != InvalidRemoteAddress ? RemoteMemory.ReadPointer(World + static_cast<uint64>(Offsets.WorldOwningGameInstance)) : InvalidRemoteAddress;
+    const FRemoteAddress Engine = GameInstance != InvalidRemoteAddress ? RemoteMemory.ReadPointer(GameInstance + FUnrealLayout::UObject_Outer) : InvalidRemoteAddress;
+
+    if (Engine == InvalidRemoteAddress || Engine == 0)
+    {
+        return FObjectHandle();
+    }
+
+    OutEngineTickIndex = Bridge.FindVirtualIndex(Engine, EngineRuntime.GetFunctions().EngineTick);
+    return OutEngineTickIndex == InvalidIndex ? FObjectHandle() : UnrealRuntime.MakeHandle(Engine);
+}
+
 bool FGameServerHost::InstallHooks()
 {
     Stage = EHostStage::InstallingHooks;
@@ -275,7 +297,12 @@ bool FGameServerHost::InstallHooks()
             return false;
         }
 
-        Engine = UnrealRuntime.FindInstanceImplementingVirtual(EngineRuntime.GetFunctions().EngineTick, EngineTickIndex);
+        Engine = FindEngineThroughWorld(EngineTickIndex);
+        if (!Engine && GetActiveBuildProfile().EngineOffsets.WorldOwningGameInstance < 0)
+        {
+            Engine = UnrealRuntime.FindInstanceImplementingVirtual(EngineRuntime.GetFunctions().EngineTick, EngineTickIndex);
+        }
+
         if (!Engine)
         {
             FWindowsPlatform::SleepMilliseconds(EngineScanIntervalMilliseconds);
@@ -442,11 +469,18 @@ bool FGameServerHost::Start()
         return false;
     }
 
-    const UNetDriver NetDriver = EngineRuntime.GetWorld().GetNetDriver();
-    if (NetDriver && Settings.GetMaxTickRate() > 0)
+    UNetDriver NetDriver = EngineRuntime.GetWorld().GetNetDriver();
+    if (NetDriver)
     {
-        UNetDriver MutableNetDriver = NetDriver;
-        MutableNetDriver.SetNetServerMaxTickRate(Settings.GetMaxTickRate());
+        if (Settings.GetMaxTickRate() > 0)
+        {
+            NetDriver.SetNetServerMaxTickRate(Settings.GetMaxTickRate());
+        }
+
+        if (Settings.GetMaxClientRate() > 0)
+        {
+            NetDriver.SetMaxClientRate(Settings.GetMaxClientRate());
+        }
     }
 
     Stage = EHostStage::RunningMatch;
@@ -480,6 +514,7 @@ void FGameServerHost::RunUntilStopped()
     }
 
     Stage = EHostStage::Stopped;
+    CloseTrackedProcess();
     FFortniteGameModule::Get().ShutdownModule();
     NetworkHooks.Uninstall();
     HttpRedirect.Uninstall();
@@ -490,6 +525,15 @@ void FGameServerHost::RunUntilStopped()
 void FGameServerHost::Stop()
 {
     bStopRequested = true;
+}
+
+void FGameServerHost::CloseTrackedProcess()
+{
+    if (Settings.ShouldTrackProcessId() && Process.IsAlive())
+    {
+        UE_LOG_DISPLAY("Host", "Closing tracked process id " + std::to_string(Process.GetProcessId()));
+        Process.Terminate();
+    }
 }
 
 EHostStage FGameServerHost::GetStage() const

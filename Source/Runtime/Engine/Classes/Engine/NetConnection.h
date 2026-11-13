@@ -13,6 +13,8 @@ public:
 
     FObjectHandle GetOwningActor() const;
 
+    FObjectHandle GetDriver() const;
+
     void SetCurrentNetSpeed(int32 Value);
 
     bool IsInternalAck() const;

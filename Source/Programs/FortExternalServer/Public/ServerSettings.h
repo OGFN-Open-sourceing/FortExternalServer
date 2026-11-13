@@ -15,9 +15,13 @@ public:
 
     int32 GetMaxTickRate() const;
 
+    int32 GetMaxClientRate() const;
+
     bool ShouldAttachToRunningProcess() const;
 
     bool IsHeadless() const;
+
+    bool ShouldTrackProcessId() const;
 
     bool ShouldEnforceVersionMatch() const;
 

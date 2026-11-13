@@ -47,6 +47,8 @@ public:
 
     void EnsureWorldInventory() const;
 
+    void EnsureQuickBars() const;
+
     void SetupAthenaPawn(const AFortPlayerPawnAthena& Pawn) const;
 
     static ENativeOverrideResult execServerAcknowledgePossession(const FNativeFunctionCall& Call);

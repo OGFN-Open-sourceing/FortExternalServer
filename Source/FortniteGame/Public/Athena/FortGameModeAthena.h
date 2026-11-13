@@ -53,6 +53,8 @@ public:
 
     static void EnsurePoiVolumeBrushes(const FUnrealRuntime& Runtime);
 
+    static void RaiseNetSpeed(const AFortPlayerControllerAthena& Controller);
+
     static ENativeOverrideResult execHandleStartingNewPlayer(const FNativeFunctionCall& Call);
 };
 

@@ -1,9 +1,10 @@
-#pragma once
+﻿#pragma once
 
 #include "Runtime/Core/Public/CoreMinimal.h"
 
 #include <algorithm>
 #include <atomic>
+#include <string_view>
 #include <string>
 #include <thread>
 
@@ -15,6 +16,8 @@ public:
     void Start(const std::wstring& InLogFilePath, bool bSkipExistingFile);
 
     void Stop();
+
+    static constexpr std::wstring_view GameLogFileName = L"FortExternalServerGame.log";
 
     static std::wstring GetDefaultLogFilePath();
 

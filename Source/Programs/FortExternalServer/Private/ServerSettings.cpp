@@ -1,7 +1,8 @@
-#include "Programs/FortExternalServer/Public/ServerSettings.h"
+﻿#include "Programs/FortExternalServer/Public/ServerSettings.h"
 #include "FortniteGame/Public/Versioning/FortBuildProfile.h"
 #include "Runtime/Core/Public/Misc/Paths.h"
 #include "Programs/FortExternalServer/Public/Configuration.h"
+#include "Programs/FortExternalServer/Public/GameLogMirror.h"
 
 namespace
 {
@@ -56,6 +57,7 @@ void FServerSettings::LogResolvedConfiguration() const
     UE_LOG_DISPLAY("Config", "MaxPlayers " + std::to_string(Match.MaxPlayers) + ", MinimumPlayers " + std::to_string(Match.MinimumPlayersToStart));
     UE_LOG_DISPLAY("Config", "bSkipVersionCheck " + DescribeBool(FConfiguration::bSkipVersionCheck));
     UE_LOG_DISPLAY("Config", "bHeadless " + DescribeBool(FConfiguration::bHeadless));
+    UE_LOG_DISPLAY("Config", "bTrackProcessId " + DescribeBool(FConfiguration::bTrackProcessId));
 
     for (const std::string& Entry : Match.StartingLoadout)
     {
@@ -78,6 +80,11 @@ int32 FServerSettings::GetMaxTickRate() const
     return FConfiguration::MaxTickRate;
 }
 
+int32 FServerSettings::GetMaxClientRate() const
+{
+    return FConfiguration::MaxClientRate;
+}
+
 bool FServerSettings::ShouldAttachToRunningProcess() const
 {
     return FConfiguration::bAttachToRunningProcess;
@@ -86,6 +93,11 @@ bool FServerSettings::ShouldAttachToRunningProcess() const
 bool FServerSettings::IsHeadless() const
 {
     return FConfiguration::bHeadless;
+}
+
+bool FServerSettings::ShouldTrackProcessId() const
+{
+    return FConfiguration::bTrackProcessId;
 }
 
 bool FServerSettings::ShouldEnforceVersionMatch() const
@@ -128,5 +140,5 @@ std::wstring FServerSettings::GetGameExecutableName() const
 
 std::string FServerSettings::BuildLaunchArguments() const
 {
-    return std::string(LaunchArguments) + (IsHeadless() ? std::string(HeadlessArguments) : std::string()) + " -port=" + std::to_string(GetPort());
+    return std::string(LaunchArguments) + " -log=" + FStringConv::ToNarrow(FGameLogMirror::GameLogFileName) + (IsHeadless() ? std::string(HeadlessArguments) : std::string()) + " -port=" + std::to_string(GetPort());
 }

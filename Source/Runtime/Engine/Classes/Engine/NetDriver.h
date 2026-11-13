@@ -18,4 +18,8 @@ public:
     FObjectHandle GetServerConnection() const;
 
     void SetNetServerMaxTickRate(int32 Value);
+
+    int32 GetMaxClientRate() const;
+
+    void SetMaxClientRate(int32 Value);
 };

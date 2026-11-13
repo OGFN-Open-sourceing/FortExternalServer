@@ -18,6 +18,7 @@ namespace
             if (GActiveHost != nullptr)
             {
                 GActiveHost->Stop();
+                GActiveHost->CloseTrackedProcess();
             }
 
             return TRUE;

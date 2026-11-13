@@ -15,6 +15,11 @@ FObjectHandle UNetConnection::GetOwningActor() const
     return Object.GetObjectProperty("OwningActor");
 }
 
+FObjectHandle UNetConnection::GetDriver() const
+{
+    return Object.GetObjectProperty("Driver");
+}
+
 void UNetConnection::SetCurrentNetSpeed(int32 Value)
 {
     Object.SetProperty<int32>("CurrentNetSpeed", Value);

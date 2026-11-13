@@ -1,4 +1,4 @@
-#include "FortniteGame/Public/Versioning/FortBuildProfile.h"
+﻿#include "FortniteGame/Public/Versioning/FortBuildProfile.h"
 
 namespace
 {
@@ -45,12 +45,12 @@ namespace
             "/Game/Items/Weapons/BuildingTools/BuildingItemData_Floor.BuildingItemData_Floor",
             "/Game/Items/Weapons/BuildingTools/BuildingItemData_Stair_W.BuildingItemData_Stair_W",
             "/Game/Items/Weapons/BuildingTools/BuildingItemData_RoofS.BuildingItemData_RoofS" };
-        Profile.AssetPaths.AbilitySets = { "/Game/Abilities/Player/Generic/Traits/DefaultPlayer/GAS_AthenaPlayer.GAS_AthenaPlayer",
-            "/Game/Abilities/Player/Generic/Traits/DefaultPlayer/GAS_DefaultPlayer.GAS_DefaultPlayer" };
+        Profile.AssetPaths.AbilitySets = { "/Game/Abilities/Player/Generic/Traits/DefaultPlayer/GAS_DefaultPlayer.GAS_DefaultPlayer" };
 
         Profile.EngineOffsets.GObjects = 0x04BA7768;
         Profile.EngineOffsets.AppendString = 0x013298E0;
         Profile.EngineOffsets.GWorld = 0x04CA7250;
+        Profile.EngineOffsets.WorldOwningGameInstance = 0x190;
         Profile.EngineOffsets.ProcessEvent = 0x014C04C0;
         Profile.EngineOffsets.ProcessEventIdx = 0x40;
         Profile.EngineOffsets.Realloc = 0x01280550;

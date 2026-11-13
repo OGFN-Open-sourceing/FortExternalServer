@@ -179,6 +179,32 @@ void AFortPlayerControllerAthena::EnsureWorldInventory() const
     }
 }
 
+void AFortPlayerControllerAthena::EnsureQuickBars() const
+{
+    if (GetQuickBars())
+    {
+        return;
+    }
+
+    const FObjectHandle QuickBarsClass = Object.GetRuntime().FindClass("FortQuickBarsAthena");
+    if (!QuickBarsClass)
+    {
+        UE_LOG_WARNING("Athena", "FortQuickBarsAthena class not found");
+        return;
+    }
+
+    const AActor QuickBars = UGameplayStatics::SpawnActor(*this, QuickBarsClass, FTransform(), ESpawnActorCollisionHandlingMethod::AlwaysSpawn, *this);
+    if (!QuickBars)
+    {
+        UE_LOG_WARNING("Athena", "Failed to spawn quickbars for " + GetName());
+        return;
+    }
+
+    Object.SetObjectProperty("QuickBars", QuickBars.GetObject());
+    Object.InvokeFunction("OnRep_QuickBar");
+    UE_LOG_DISPLAY("Athena", "Spawned quickbars for " + GetName());
+}
+
 void AFortPlayerControllerAthena::ApplyDefaultCharacterParts() const
 {
     const FFortBuildProfile& Profile = GetActiveBuildProfile();
@@ -209,8 +235,16 @@ void AFortPlayerControllerAthena::GiveAthenaAbilities() const
     for (const std::string& AbilitySetPath : GetActiveBuildProfile().AssetPaths.AbilitySets)
     {
         const UFortAbilitySet AbilitySet(Object.GetRuntime().FindOrLoadObject(AbilitySetPath));
-        if (AbilitySet && AbilitySet.GiveToAbilitySystem(EngineRuntime, AbilitySystemComponent) > 0)
+        if (!AbilitySet)
         {
+            UE_LOG_WARNING("Athena", "Ability set " + AbilitySetPath + " could not be loaded");
+            continue;
+        }
+
+        const int32 GrantedCount = AbilitySet.GiveToAbilitySystem(EngineRuntime, AbilitySystemComponent);
+        if (GrantedCount > 0)
+        {
+            UE_LOG_DISPLAY("Athena", "Gave " + std::to_string(GrantedCount) + " abilities from " + AbilitySet.GetName() + " to " + GetName());
             return;
         }
     }
@@ -247,6 +281,8 @@ void AFortPlayerControllerAthena::SetupAthenaPawn(const AFortPlayerPawnAthena& P
         return;
     }
 
+    EnsureWorldInventory();
+    EnsureQuickBars();
     ApplyDefaultCharacterParts();
     GiveAthenaAbilities();
     GiveStartingInventory();

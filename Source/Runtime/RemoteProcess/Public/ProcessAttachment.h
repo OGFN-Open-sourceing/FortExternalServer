@@ -19,9 +19,9 @@ public:
     FProcessAttachment(const FProcessAttachment&) = delete;
     FProcessAttachment& operator=(const FProcessAttachment&) = delete;
 
-    bool LaunchAndAttach(const std::wstring& ExecutablePath, const std::wstring& CommandLine, const std::wstring& WorkingDirectory, bool bStartSuspended, bool bHidden);
+    bool LaunchAndAttach(const std::wstring& ExecutablePath, const std::wstring& CommandLine, const std::wstring& WorkingDirectory, bool bStartSuspended, bool bHidden, bool bTrackLifetime);
 
-    bool AttachToRunning(const std::wstring& ProcessImageName, uint32 TimeoutMilliseconds);
+    bool AttachToRunning(const std::wstring& ProcessImageName, uint32 TimeoutMilliseconds, bool bTrackLifetime);
 
     void Detach();
 
@@ -57,8 +57,11 @@ public:
     static uint32 FindOldestThreadId(uint32 OwnerProcessId);
 
 private:
+    bool BindLifetimeToHost();
+
     void* ProcessHandle = nullptr;
     void* MainThreadHandle = nullptr;
+    void* LifetimeJobHandle = nullptr;
     uint32 ProcessId = 0;
     uint32 MainThreadId = 0;
     std::wstring PrimaryModuleName;

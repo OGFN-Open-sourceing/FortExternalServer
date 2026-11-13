@@ -7,7 +7,7 @@ FProcessAttachment::~FProcessAttachment()
     Detach();
 }
 
-bool FProcessAttachment::LaunchAndAttach(const std::wstring& ExecutablePath, const std::wstring& CommandLine, const std::wstring& WorkingDirectory, bool bStartSuspended, bool bHidden)
+bool FProcessAttachment::LaunchAndAttach(const std::wstring& ExecutablePath, const std::wstring& CommandLine, const std::wstring& WorkingDirectory, bool bStartSuspended, bool bHidden, bool bTrackLifetime)
 {
     Detach();
 
@@ -51,11 +51,37 @@ bool FProcessAttachment::LaunchAndAttach(const std::wstring& ExecutablePath, con
     const size_t Separator = ExecutablePath.find_last_of(L'\\');
     PrimaryModuleName = Separator == std::wstring::npos ? ExecutablePath : ExecutablePath.substr(Separator + 1);
 
+    if (bTrackLifetime)
+    {
+        BindLifetimeToHost();
+    }
+
     UE_LOG_DISPLAY("RemoteProcess", "Launched " + FStringConv::ToNarrow(PrimaryModuleName) + " with process id " + std::to_string(ProcessId));
     return true;
 }
 
-bool FProcessAttachment::AttachToRunning(const std::wstring& ProcessImageName, uint32 TimeoutMilliseconds)
+bool FProcessAttachment::BindLifetimeToHost()
+{
+    LifetimeJobHandle = ::CreateJobObjectW(nullptr, nullptr);
+
+    JOBOBJECT_EXTENDED_LIMIT_INFORMATION Limits = {};
+    Limits.BasicLimitInformation.LimitFlags = JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE;
+
+    const bool bBound = LifetimeJobHandle != nullptr &&
+        ::SetInformationJobObject(LifetimeJobHandle, JobObjectExtendedLimitInformation, &Limits, sizeof(Limits)) != FALSE &&
+        ::AssignProcessToJobObject(LifetimeJobHandle, ProcessHandle) != FALSE;
+
+    if (!bBound)
+    {
+        UE_LOG_WARNING("RemoteProcess", "Process id " + std::to_string(ProcessId) + " will outlive this host: " + FStringConv::ToNarrow(FWindowsPlatform::GetLastErrorText(::GetLastError())));
+        return false;
+    }
+
+    UE_LOG_DISPLAY("RemoteProcess", "Tracking process id " + std::to_string(ProcessId) + ", it closes with this host");
+    return true;
+}
+
+bool FProcessAttachment::AttachToRunning(const std::wstring& ProcessImageName, uint32 TimeoutMilliseconds, bool bTrackLifetime)
 {
     Detach();
 
@@ -79,7 +105,7 @@ bool FProcessAttachment::AttachToRunning(const std::wstring& ProcessImageName, u
         return false;
     }
 
-    constexpr DWORD DesiredAccess = PROCESS_VM_READ | PROCESS_VM_WRITE | PROCESS_VM_OPERATION | PROCESS_QUERY_INFORMATION | PROCESS_CREATE_THREAD | SYNCHRONIZE;
+    constexpr DWORD DesiredAccess = PROCESS_VM_READ | PROCESS_VM_WRITE | PROCESS_VM_OPERATION | PROCESS_QUERY_INFORMATION | PROCESS_CREATE_THREAD | PROCESS_TERMINATE | PROCESS_SET_QUOTA | SYNCHRONIZE;
 
     ProcessHandle = ::OpenProcess(DesiredAccess, FALSE, FoundProcessId);
     if (ProcessHandle == nullptr)
@@ -93,6 +119,11 @@ bool FProcessAttachment::AttachToRunning(const std::wstring& ProcessImageName, u
     PrimaryModuleName = ProcessImageName;
 
     UE_LOG_DISPLAY("RemoteProcess", "Attached to " + FStringConv::ToNarrow(ProcessImageName) + " with process id " + std::to_string(ProcessId));
+
+    if (bTrackLifetime)
+    {
+        BindLifetimeToHost();
+    }
     return true;
 }
 
@@ -110,6 +141,12 @@ void FProcessAttachment::Detach()
     {
         ::CloseHandle(ProcessHandle);
         ProcessHandle = nullptr;
+    }
+
+    if (LifetimeJobHandle != nullptr)
+    {
+        ::CloseHandle(LifetimeJobHandle);
+        LifetimeJobHandle = nullptr;
     }
 
     ProcessId = 0;
